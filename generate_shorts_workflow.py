@@ -162,7 +162,12 @@ wf.node(
         "jsCode": (
             "// ==== CHINH LAI CHO DUNG MAY BAN NEU CAN ====\n"
             "const BASE_DIR = '/Users/tuht1/tui-dau-tu-videos';\n"
-            "const VIDEOS_PER_DAY = 5;\n"
+            "// FIX: giam ve 1 video/lan chay (moi lan chay chi dang DUNG 1 video len\n"
+            "// YouTube/Facebook/TikTok) thay vi 5 video/lan nhu truoc - tranh truong\n"
+            "// hop 1 topic bi loi/qua ngan (vd Screen Planner tra qua it scene) van\n"
+            "// bi tu dong dang cong khai vi cac topic sau van chay tiep trong cung 1\n"
+            "// lan Loop Over Headlines.\n"
+            "const VIDEOS_PER_DAY = 1;\n"
             "const NICHES = ['tam_ly', 'dau_tu']; // luan phien 2 nhom noi dung\n"
             "const CHANNEL_NAME = 'Tui dau tu';\n"
             "// --- Facebook Reels (Graph API) ---\n"
@@ -1531,7 +1536,10 @@ wf.node(
     "n8n-nodes-base.httpRequest",
     {
         "method": "POST",
-        "url": "https://graph.facebook.com/v21.0/{{ $('Load Config').first().json.FB_PAGE_ID }}/video_reels",
+        # FIX (thieu dau '=' o dau -> n8n gui NGUYEN VAN chuoi '{{ ... }}' cho
+        # Facebook thay vi tinh gia tri that, khien Facebook tra loi 400 'Object
+        # with ID {{ ... }} does not exist' - da kiem chung tu loi thuc te).
+        "url": "=https://graph.facebook.com/v21.0/{{ $('Load Config').first().json.FB_PAGE_ID }}/video_reels",
         "sendBody": True,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ upload_phase: 'start', access_token: $('Load Config').first().json.FB_ACCESS_TOKEN }) }}",
@@ -1579,7 +1587,8 @@ wf.node(
     "n8n-nodes-base.httpRequest",
     {
         "method": "POST",
-        "url": "https://graph.facebook.com/v21.0/{{ $('Load Config').first().json.FB_PAGE_ID }}/video_reels",
+        # FIX: cung loi thieu dau '=' nhu FB: Start Upload o tren.
+        "url": "=https://graph.facebook.com/v21.0/{{ $('Load Config').first().json.FB_PAGE_ID }}/video_reels",
         "sendQuery": True,
         "queryParameters": {
             "parameters": [
