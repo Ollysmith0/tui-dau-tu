@@ -478,6 +478,13 @@ wf.node(
             "narration cuon hut, nhip nhanh, giong nguoi chia se that su chu khong doc bao "
             "cao kho khan. Bo hoan toan phan chao hoi dai dong, di thang vao noi dung ngay tu "
             "giay dau tien.\n\n"
+            "QUAN TRONG (tranh bi YouTube xep vao 'reused/repetitious content' va tu choi "
+            "kiem tien): video KHONG duoc chi tom tat/doc lai tin tuc. Narration BAT BUOC "
+            "phai co GOC NHIN/PHAN TICH/Y KIEN RIENG cua nguoi dan chuong trinh ve chu de "
+            "nay (vi du: vi sao dieu nay quan trong, bai hoc rut ra, loi khuyen thuc te ap "
+            "dung duoc) - khong chi liet ke su kien/so lieu suong. Neu niche la 'dau_tu', "
+            "KHONG dua ra loi khuyen mua/ban cu the hay cam ket loi nhuan - trinh bay duoi "
+            "dang quan diem/phan tich ca nhan, khong phai loi khuyen dau tu.\n\n"
             "Output CHI JSON, khong markdown, khong giai thich:\n"
             "{\n"
             '  "title": "",\n'
@@ -1433,7 +1440,10 @@ wf.node(
             "const thumbCtx = $('Build Thumbnail Image Query').first().json;\n"
             "const thumbnailPath = $('Init Paths').first().json.thumbnailPath;\n\n"
             "const hashtags = (thumbCtx.hashtags || []).map((h) => (h.startsWith('#') ? h : `#${h}`));\n"
-            "const description = [thumbCtx.description || '', hashtags.join(' ')].filter(Boolean).join('\\n\\n');\n\n"
+            "// Disclaimer BAT BUOC cho noi dung dau tu tai chinh - giup tranh bi AdSense/\n"
+            "// nen tang han che quang cao vi hieu nham la 'loi khuyen dau tu' cam ket loi nhuan.\n"
+            "const DISCLAIMER = 'Noi dung mang tinh chia se, tham khao va giai tri, KHONG phai loi khuyen dau tu. Tu chiu trach nhiem voi quyet dinh tai chinh cua ban.';\n"
+            "const description = [thumbCtx.description || '', DISCLAIMER, hashtags.join(' ')].filter(Boolean).join('\\n\\n');\n\n"
             "// fileSize duoc tinh 1 lan o day (dung chung cho ca nhanh Facebook Reels va\n"
             "// TikTok ben duoi - ca hai deu can biet chinh xac so byte de upload).\n"
             "const fileSize = fs.statSync(videoData.finalVideoPath).size;\n\n"
@@ -1478,6 +1488,36 @@ wf.node(
     },
     6488, Y_MAIN,
     extra={"credentials": YOUTUBE_CRED},
+)
+
+wf.node(
+    # YouTube yeu cau tu khai bao noi dung AI-tao/chinh sua dang ke ("Altered
+    # or synthetic content" disclosure). Kenh nay dung TTS + anh AI-search +
+    # kich ban do LLM viet nen thuoc dien phai khai bao. Goi PUT
+    # videos?part=status NGAY SAU khi upload, doc lai chinh privacyStatus/
+    # selfDeclaredMadeForKids tu response cua Upload Video To YouTube de
+    # KHONG vo tinh ghi de/reset cac gia tri do (YouTube API se reset cac
+    # subfield khong duoc gui kem trong cung 1 part).
+    "Set YouTube Synthetic Content Label",
+    "n8n-nodes-base.httpRequest",
+    {
+        "method": "PUT",
+        "url": "=https://www.googleapis.com/youtube/v3/videos?part=status",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "youTubeOAuth2Api",
+        "sendBody": True,
+        "specifyBody": "json",
+        "jsonBody": (
+            "={{ JSON.stringify({ id: $('Upload Video To YouTube').first().json.id, status: { "
+            "privacyStatus: $('Upload Video To YouTube').first().json.status.privacyStatus, "
+            "selfDeclaredMadeForKids: $('Upload Video To YouTube').first().json.status.selfDeclaredMadeForKids, "
+            "containsSyntheticMedia: true } }) }}"
+        ),
+        "options": {"timeout": 20000},
+    },
+    6600, Y_MAIN - 120,
+    type_version=4.4,
+    extra={"credentials": YOUTUBE_CRED, "onError": "continueRegularOutput"},
 )
 
 wf.node(
@@ -1562,7 +1602,12 @@ wf.node(
     "FB: Upload Video",
     "n8n-nodes-base.httpRequest",
     {
-        "method": "PUT",
+        # FIX (2026-07-27): docs Reels Publishing API cua Facebook (Step 2 -
+        # Upload the Video) yeu cau POST toi rupload.facebook.com, KHONG phai
+        # PUT - dung PUT bi tra ve 404 rong (khong co body), khien video
+        # khong bao gio thuc su duoc upload va FB: Publish Reel bao loi
+        # "Video Upload Is Missing" ngay sau do.
+        "method": "POST",
         "url": "={{ $('FB: Start Upload').first().json.upload_url }}",
         "sendHeaders": True,
         "headerParameters": {
@@ -1795,6 +1840,7 @@ wf.link("Execute Render Script (ffmpeg)", "Merge Video + Thumbnail", dst_index=0
 wf.link("Merge Video + Thumbnail", "Prepare YouTube Metadata")
 wf.link("Prepare YouTube Metadata", "Read Final Video File")
 wf.link("Read Final Video File", "Upload Video To YouTube")
+wf.link("Upload Video To YouTube", "Set YouTube Synthetic Content Label")
 wf.link("Upload Video To YouTube", "Read Thumbnail File")
 wf.link("Read Thumbnail File", "Set YouTube Thumbnail")
 

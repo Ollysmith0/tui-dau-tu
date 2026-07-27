@@ -13,8 +13,8 @@
         -320,
         4820
       ],
-      "id": "4c2ae1f5-9956-4052-9e29-c9e4c794aa73",
-      "name": "Note d2265f61"
+      "id": "7c141a21-b525-4ee9-b88c-50abef52571c",
+      "name": "Note 06888f91"
     },
     {
       "parameters": {
@@ -32,7 +32,7 @@
         -96,
         5160
       ],
-      "id": "4a9b7862-0f9b-4dfa-a47f-197ae919dfbc",
+      "id": "6073dc75-bce3-47ad-b199-ce60cc145fa4",
       "name": "Schedule Trigger"
     },
     {
@@ -45,7 +45,7 @@
         128,
         5160
       ],
-      "id": "24e6b5c1-10a3-43c4-9c35-1db173a00046",
+      "id": "9a5079ab-a9ba-48db-bfee-97fa736144d7",
       "name": "Load Config"
     },
     {
@@ -58,7 +58,7 @@
         352,
         5160
       ],
-      "id": "82f12319-6778-4a0d-b517-564dca98cd14",
+      "id": "de8a1adc-7a01-489f-8f24-ee44dd596842",
       "name": "Build Topics Query"
     },
     {
@@ -80,7 +80,7 @@
         576,
         5160
       ],
-      "id": "bd6221a7-b667-453f-aeeb-6bc537d6ee2a",
+      "id": "3752a213-791a-4dc5-821f-4178ca58396a",
       "name": "Tavily Search (Topics)",
       "credentials": {
         "tavilyApi": {
@@ -99,7 +99,7 @@
         800,
         5160
       ],
-      "id": "5e20eac8-8894-453c-aece-12b3f7c77b55",
+      "id": "705de609-6bf7-47af-814b-13ccdc242f38",
       "name": "Parse Topics Results"
     },
     {
@@ -115,7 +115,7 @@
         1024,
         5384
       ],
-      "id": "f9982a69-617a-4217-bc84-6da1fa837baa",
+      "id": "8bf536f2-2bfc-4d44-a588-400325d4609d",
       "name": "Ollama Chat Model (Topics)",
       "credentials": {
         "ollamaApi": {
@@ -136,7 +136,7 @@
         1248,
         5160
       ],
-      "id": "652dd0fe-8e56-4599-99cb-d79a8051f210",
+      "id": "273048e1-3596-4919-bb29-ce23b59dcff0",
       "name": "Pick Daily Topics Agent"
     },
     {
@@ -149,7 +149,7 @@
         1472,
         5160
       ],
-      "id": "82e35c6f-8ee7-4d78-acf0-811027016999",
+      "id": "1edaaa33-2107-4ffd-af27-ae2233736c71",
       "name": "Parse & Split Topics"
     },
     {
@@ -162,7 +162,7 @@
         1696,
         5160
       ],
-      "id": "99acabb5-020d-421b-86b5-17b81540ec72",
+      "id": "c37978cf-9bdc-47bf-802f-3e591e137720",
       "name": "Loop Over Headlines"
     },
     {
@@ -178,8 +178,8 @@
         1920,
         4820
       ],
-      "id": "5d6d2c65-5e87-4dfa-bbf8-5605a9c3401a",
-      "name": "Note 9ee74de0"
+      "id": "c265eb10-a942-4c84-89b9-ccd785682d09",
+      "name": "Note faf97686"
     },
     {
       "parameters": {
@@ -192,7 +192,7 @@
         1976,
         5160
       ],
-      "id": "cf33d20d-6470-4ca6-b606-0336bdcab3b9",
+      "id": "336ce115-ea21-4d1c-8347-bc91370e3bf7",
       "name": "Generate Video ID"
     },
     {
@@ -205,7 +205,7 @@
         2200,
         5160
       ],
-      "id": "b8c3424c-365b-4db7-92b2-159bf4133a66",
+      "id": "80552187-ccb3-4b51-94e7-9ef0adcf4e46",
       "name": "Init Paths"
     },
     {
@@ -218,7 +218,7 @@
         2424,
         5160
       ],
-      "id": "0f613438-d8cd-400d-b773-d3ea6da8d6a1",
+      "id": "8d47b006-7ef5-44b2-8d0f-c5a3107188e1",
       "name": "Reset Scene Store"
     },
     {
@@ -233,7 +233,7 @@
         2872,
         5384
       ],
-      "id": "b8cebcd1-bb6c-46f3-9b83-1d45693a95d4",
+      "id": "8783035d-5763-4b33-b690-8f2913938091",
       "name": "Simple Memory"
     },
     {
@@ -249,7 +249,7 @@
         2744,
         5384
       ],
-      "id": "2f640d8f-9503-49da-9b7d-7164c4b0d4e2",
+      "id": "630d6076-219e-4c5a-9675-6f18bf9490ae",
       "name": "Ollama Chat Model (Research)",
       "credentials": {
         "ollamaApi": {
@@ -269,7 +269,7 @@
         2996,
         5384
       ],
-      "id": "035e5581-ba9f-4259-828a-143dfe6059bf",
+      "id": "bdf6fdfd-9472-471f-b933-fb9535112954",
       "name": "Search in Tavily",
       "credentials": {
         "tavilyApi": {
@@ -281,7 +281,7 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "=Ban la BIEN TAP VIEN kenh Shorts \"{{ $json.channelName }}\", chuyen san xuat video NGAN (duoi 2 phut) ve TAM LY HOC ung dung hoac DAU TU TAI CHINH ca nhan, dinh dang DOC 9:16.\n\nChu de hom nay (niche = {{ $json.niche }}):\nHeadline: {{ $json.headline }}\nGoc nhin goi y: {{ $json.angle }}\nNguon tham khao: {{ $json.sourceUrl }}\n\nNeu niche la 'tam_ly': tap trung vao mot insight tam ly cu the, de ap dung ngay vao cuoc song (cam xuc, thoi quen, giao tiep, tu duy). Neu niche la 'dau_tu': tap trung vao mot su kien/kien thuc dau tu tai chinh cu the, so lieu ro rang, khong phan tich vi mo lan man.\n\nDung tool Tavily NEU can them thong tin nen dang tin cay. Video dai muc tieu 90-120 giay - can du chat lieu cho 8-14 scene, khong chi 1 y ngan gon. Viet narration cuon hut, nhip nhanh, giong nguoi chia se that su chu khong doc bao cao kho khan. Bo hoan toan phan chao hoi dai dong, di thang vao noi dung ngay tu giay dau tien.\n\nOutput CHI JSON, khong markdown, khong giai thich:\n{\n  \"title\": \"\",\n  \"description\": \"\",\n  \"tags\": [],\n  \"hashtags\": [],\n  \"report\": {}\n}",
+        "text": "=Ban la BIEN TAP VIEN kenh Shorts \"{{ $json.channelName }}\", chuyen san xuat video NGAN (duoi 2 phut) ve TAM LY HOC ung dung hoac DAU TU TAI CHINH ca nhan, dinh dang DOC 9:16.\n\nChu de hom nay (niche = {{ $json.niche }}):\nHeadline: {{ $json.headline }}\nGoc nhin goi y: {{ $json.angle }}\nNguon tham khao: {{ $json.sourceUrl }}\n\nNeu niche la 'tam_ly': tap trung vao mot insight tam ly cu the, de ap dung ngay vao cuoc song (cam xuc, thoi quen, giao tiep, tu duy). Neu niche la 'dau_tu': tap trung vao mot su kien/kien thuc dau tu tai chinh cu the, so lieu ro rang, khong phan tich vi mo lan man.\n\nDung tool Tavily NEU can them thong tin nen dang tin cay. Video dai muc tieu 90-120 giay - can du chat lieu cho 8-14 scene, khong chi 1 y ngan gon. Viet narration cuon hut, nhip nhanh, giong nguoi chia se that su chu khong doc bao cao kho khan. Bo hoan toan phan chao hoi dai dong, di thang vao noi dung ngay tu giay dau tien.\n\nQUAN TRONG (tranh bi YouTube xep vao 'reused/repetitious content' va tu choi kiem tien): video KHONG duoc chi tom tat/doc lai tin tuc. Narration BAT BUOC phai co GOC NHIN/PHAN TICH/Y KIEN RIENG cua nguoi dan chuong trinh ve chu de nay (vi du: vi sao dieu nay quan trong, bai hoc rut ra, loi khuyen thuc te ap dung duoc) - khong chi liet ke su kien/so lieu suong. Neu niche la 'dau_tu', KHONG dua ra loi khuyen mua/ban cu the hay cam ket loi nhuan - trinh bay duoi dang quan diem/phan tich ca nhan, khong phai loi khuyen dau tu.\n\nOutput CHI JSON, khong markdown, khong giai thich:\n{\n  \"title\": \"\",\n  \"description\": \"\",\n  \"tags\": [],\n  \"hashtags\": [],\n  \"report\": {}\n}",
         "options": {}
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
@@ -290,7 +290,7 @@
         2872,
         5160
       ],
-      "id": "dbe7b089-dd2d-4934-bcba-9a1ad2992afa",
+      "id": "adc065c2-69ce-4803-9d91-be82a74ff594",
       "name": "Research Agent"
     },
     {
@@ -306,7 +306,7 @@
         3352,
         5040
       ],
-      "id": "d6183b59-5669-4237-86d6-954570b09123",
+      "id": "edb05990-70db-4e2f-9443-32dc7af0a1c5",
       "name": "Ollama Chat Model (Planner)",
       "credentials": {
         "ollamaApi": {
@@ -327,7 +327,7 @@
         3352,
         5160
       ],
-      "id": "f80660b5-e227-4f5a-a7eb-df940e57d5a5",
+      "id": "a9386c9c-9ba3-4add-b6ea-f1f3f7bfd02e",
       "name": "Screen Planner"
     },
     {
@@ -340,7 +340,7 @@
         3800,
         5160
       ],
-      "id": "eed09781-99ca-4c89-af1f-be2c4e26de82",
+      "id": "c88afe29-4ffc-467a-97e5-71d04685e1a0",
       "name": "normalize scene data"
     },
     {
@@ -365,7 +365,7 @@
         4024,
         5160
       ],
-      "id": "dd5cac33-a6ae-47f3-9a4b-f8fb1ebe640d",
+      "id": "6368999f-f6c7-47f5-975c-dbf1a8b68a1f",
       "name": "Generate audio (vietTTS)"
     },
     {
@@ -378,7 +378,7 @@
         4248,
         5160
       ],
-      "id": "178ecb9b-9e13-4bc7-8c14-54b718224ed2",
+      "id": "088bbfdf-6054-4d23-80dd-1b0db6db595d",
       "name": "attach audio to scene"
     },
     {
@@ -391,7 +391,7 @@
         4472,
         5160
       ],
-      "id": "413fa91c-a534-4b3a-a02d-5903296846dd",
+      "id": "c272f407-de34-454b-90fd-5850498b7eb7",
       "name": "Loop Over Scenes"
     },
     {
@@ -405,7 +405,7 @@
         4696,
         4872
       ],
-      "id": "a1b8fd22-32f1-4f17-b40c-b6a16b2ce7eb",
+      "id": "f2c269d0-26db-43b5-8b84-ae18144aece7",
       "name": "Build Image Queries"
     },
     {
@@ -421,7 +421,7 @@
         4920,
         4872
       ],
-      "id": "0ba43d4d-bd0b-4320-a14f-fcc83726a403",
+      "id": "e4f8e1ea-dd6c-43f8-a7ec-df13174f7c86",
       "name": "Write audio file"
     },
     {
@@ -443,7 +443,7 @@
         5144,
         4872
       ],
-      "id": "fa8724af-05f0-4e5d-add3-8f3851bcb7f2",
+      "id": "3f0f46da-8a9d-4b35-baac-9569d6d38e68",
       "name": "Tavily Image Search",
       "credentials": {
         "tavilyApi": {
@@ -462,7 +462,7 @@
         5368,
         4872
       ],
-      "id": "25d532d5-29ca-484f-ac08-df97e23a7e97",
+      "id": "d9944c8b-b130-47e2-b19f-164c1e2e652b",
       "name": "Check Tavily Images"
     },
     {
@@ -496,7 +496,7 @@
         5592,
         4872
       ],
-      "id": "e1457fa2-b233-4cac-82f3-31daf2b2a033",
+      "id": "7662e91b-f3ba-4661-82e1-b1aa17a82f78",
       "name": "Has Tavily Image?"
     },
     {
@@ -518,7 +518,7 @@
         5816,
         4800
       ],
-      "id": "439a6399-fb7b-4ed6-9186-3dc867ebdedc",
+      "id": "c10dac13-7b70-4594-af79-0b821338f8a7",
       "name": "Download Image (Tavily)",
       "onError": "continueRegularOutput"
     },
@@ -533,7 +533,7 @@
         6040,
         4800
       ],
-      "id": "673d97a4-3a26-4b89-b803-3391ae8eb03d",
+      "id": "8b8f2159-c410-4209-a73a-bfaeca4c6946",
       "name": "Validate Tavily Image"
     },
     {
@@ -567,7 +567,7 @@
         6264,
         4800
       ],
-      "id": "252fe976-60e2-46b3-b9b6-3c68e60f57c8",
+      "id": "3868e536-65b7-42a9-8c8c-6d8c777a435b",
       "name": "Is Tavily Image Valid?"
     },
     {
@@ -585,7 +585,7 @@
         6488,
         4944
       ],
-      "id": "d4b8345d-4f56-4711-92a5-694ca80adedd",
+      "id": "06b0ca2e-f94f-45fe-9774-5df0306bd5db",
       "name": "Pexels Image Search",
       "credentials": {
         "httpHeaderAuth": {
@@ -605,7 +605,7 @@
         6712,
         4944
       ],
-      "id": "5695ee76-a6db-437f-9c88-5c93c75f6850",
+      "id": "2561019c-111a-4bde-9c62-aedbfdeb6c8b",
       "name": "Extract Pexels Image URL"
     },
     {
@@ -626,7 +626,7 @@
         6936,
         4944
       ],
-      "id": "2dbde7e7-646c-4650-acc9-fdc9191c289e",
+      "id": "8282e38a-84ee-4eed-b3f3-3929ac3201f8",
       "name": "Download Image (Pexels)"
     },
     {
@@ -640,7 +640,7 @@
         7160,
         4872
       ],
-      "id": "9a785fce-d44b-47be-8821-99627ff90102",
+      "id": "2caa1c29-41a5-49d7-bcba-3858e1e47191",
       "name": "Finalize Scene Image"
     },
     {
@@ -656,7 +656,7 @@
         7384,
         5040
       ],
-      "id": "7a4d8b15-923d-4db5-8519-a445496e24a1",
+      "id": "289f3b57-94e2-452e-a459-b99566533941",
       "name": "Write image file"
     },
     {
@@ -669,7 +669,7 @@
         4696,
         5160
       ],
-      "id": "1c3076a1-7a85-41b9-aa8e-29f6e180ab0f",
+      "id": "29731423-b7d8-47ac-bebe-711523f8d08e",
       "name": "prepare storyboard.json"
     },
     {
@@ -685,7 +685,7 @@
         4920,
         5160
       ],
-      "id": "2e28e4cc-afbd-457d-840e-734c22c1a2a9",
+      "id": "a519b6f4-0b5a-42ab-b3de-731c81c087dc",
       "name": "Write storyboard.json"
     },
     {
@@ -698,7 +698,7 @@
         5144,
         5160
       ],
-      "id": "293da84a-9243-487a-80b6-8a0092c08790",
+      "id": "6ea68552-e2f8-46f3-b6c7-410969961869",
       "name": "Build Render Script"
     },
     {
@@ -714,7 +714,7 @@
         5368,
         5160
       ],
-      "id": "512557de-1974-4db6-aafa-367deae24318",
+      "id": "f436aa2c-1b7c-4c9a-9d7b-0f5d2a197113",
       "name": "Write Render Script"
     },
     {
@@ -727,7 +727,7 @@
         5592,
         5160
       ],
-      "id": "a420d149-9be5-4a2e-b11f-8eaefc1fec26",
+      "id": "4fa82020-2950-4270-bcc1-d274c3935c5a",
       "name": "Execute Render Script (ffmpeg)"
     },
     {
@@ -741,7 +741,7 @@
         2648,
         5456
       ],
-      "id": "405e47f6-fe35-41e2-8f69-a8719538867e",
+      "id": "5cac2eee-0e62-4e36-80aa-e3b51e35a6ed",
       "name": "Build Thumbnail Image Query"
     },
     {
@@ -763,7 +763,7 @@
         2872,
         5456
       ],
-      "id": "334f0823-60b2-4fc4-bc85-8bba32826923",
+      "id": "48e0b882-c630-4910-a946-9d0099943970",
       "name": "Tavily Image Search (Thumbnail)",
       "credentials": {
         "tavilyApi": {
@@ -783,7 +783,7 @@
         3096,
         5456
       ],
-      "id": "7c9bc70b-5d38-4ca1-ba59-a61f5f8dadc8",
+      "id": "134a98ff-2072-4c1c-bab6-2b3abca8e628",
       "name": "Check Tavily Images (Thumbnail)"
     },
     {
@@ -817,7 +817,7 @@
         3320,
         5456
       ],
-      "id": "45027434-1f95-4c64-b49e-40dd168fcc7f",
+      "id": "4fb9993d-b8ed-4209-bbb5-bab4a572d7d7",
       "name": "Has Tavily Image? (Thumbnail)"
     },
     {
@@ -839,7 +839,7 @@
         3544,
         5384
       ],
-      "id": "eeea2c1f-9eba-4a32-b3fa-f2ee90d6b8a0",
+      "id": "318d445f-ff60-432f-9762-f9cf19e22ee6",
       "name": "Download Thumbnail (Tavily)",
       "onError": "continueRegularOutput"
     },
@@ -854,7 +854,7 @@
         3768,
         5384
       ],
-      "id": "5b02fe22-ff02-4a9f-8b09-33581d243da7",
+      "id": "7222cc1e-d5a4-44c8-a1b6-a89b03159fea",
       "name": "Validate Tavily Thumbnail"
     },
     {
@@ -888,7 +888,7 @@
         3992,
         5384
       ],
-      "id": "9a7b07d7-01c8-4b9c-bc82-8d0bfc507758",
+      "id": "e3ed86fb-d448-4427-a09b-c69979af65cf",
       "name": "Is Tavily Thumbnail Valid?"
     },
     {
@@ -906,7 +906,7 @@
         4216,
         5456
       ],
-      "id": "f8e34e93-a804-49bc-b9e1-f14cfd71a5da",
+      "id": "c866eb9b-da57-41f8-b5b6-7a3c4294a8f7",
       "name": "Pexels Image Search (Thumbnail)",
       "credentials": {
         "httpHeaderAuth": {
@@ -926,7 +926,7 @@
         4440,
         5456
       ],
-      "id": "1c8c0fa6-f26e-400a-86f5-e3e3e02edb93",
+      "id": "4e740aef-3ba9-4d87-92c3-8ec9c3716b0f",
       "name": "Extract Pexels Image URL (Thumbnail)"
     },
     {
@@ -947,7 +947,7 @@
         4664,
         5456
       ],
-      "id": "e4360f48-6616-471d-b8b9-bf1512aaa454",
+      "id": "3e1e7a06-ef27-4563-94cf-0ede418be9bc",
       "name": "Download Thumbnail (Pexels)"
     },
     {
@@ -962,7 +962,7 @@
         4888,
         5384
       ],
-      "id": "09cf5016-47f4-4dec-8bce-9d9f62b4b2db",
+      "id": "6e69064f-77b3-488f-bff5-4ee8fafb785b",
       "name": "Write Thumbnail Background"
     },
     {
@@ -977,12 +977,12 @@
         5816,
         5160
       ],
-      "id": "91c5702e-d320-45c9-b1c8-eab5c8e7a7d1",
+      "id": "7792601d-7c33-4f6a-93c9-36a2e6013de1",
       "name": "Merge Video + Thumbnail"
     },
     {
       "parameters": {
-        "jsCode": "const fs = require('fs');\nconst videoData = $('Build Render Script').first().json;\nconst thumbCtx = $('Build Thumbnail Image Query').first().json;\nconst thumbnailPath = $('Init Paths').first().json.thumbnailPath;\n\nconst hashtags = (thumbCtx.hashtags || []).map((h) => (h.startsWith('#') ? h : `#${h}`));\nconst description = [thumbCtx.description || '', hashtags.join(' ')].filter(Boolean).join('\\n\\n');\n\n// fileSize duoc tinh 1 lan o day (dung chung cho ca nhanh Facebook Reels va\n// TikTok ben duoi - ca hai deu can biet chinh xac so byte de upload).\nconst fileSize = fs.statSync(videoData.finalVideoPath).size;\n\nreturn [{\n  json: {\n    videoId: videoData.videoId,\n    niche: thumbCtx.niche,\n    finalVideoPath: videoData.finalVideoPath,\n    fileSize,\n    thumbnailPath,\n    title: thumbCtx.title,\n    description,\n    tags: thumbCtx.tags\n  }\n}];"
+        "jsCode": "const fs = require('fs');\nconst videoData = $('Build Render Script').first().json;\nconst thumbCtx = $('Build Thumbnail Image Query').first().json;\nconst thumbnailPath = $('Init Paths').first().json.thumbnailPath;\n\nconst hashtags = (thumbCtx.hashtags || []).map((h) => (h.startsWith('#') ? h : `#${h}`));\n// Disclaimer BAT BUOC cho noi dung dau tu tai chinh - giup tranh bi AdSense/\n// nen tang han che quang cao vi hieu nham la 'loi khuyen dau tu' cam ket loi nhuan.\nconst DISCLAIMER = 'Noi dung mang tinh chia se, tham khao va giai tri, KHONG phai loi khuyen dau tu. Tu chiu trach nhiem voi quyet dinh tai chinh cua ban.';\nconst description = [thumbCtx.description || '', DISCLAIMER, hashtags.join(' ')].filter(Boolean).join('\\n\\n');\n\n// fileSize duoc tinh 1 lan o day (dung chung cho ca nhanh Facebook Reels va\n// TikTok ben duoi - ca hai deu can biet chinh xac so byte de upload).\nconst fileSize = fs.statSync(videoData.finalVideoPath).size;\n\nreturn [{\n  json: {\n    videoId: videoData.videoId,\n    niche: thumbCtx.niche,\n    finalVideoPath: videoData.finalVideoPath,\n    fileSize,\n    thumbnailPath,\n    title: thumbCtx.title,\n    description,\n    tags: thumbCtx.tags\n  }\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -990,7 +990,7 @@
         6040,
         5160
       ],
-      "id": "47fcb272-1e03-4b21-8e5d-0cfe4034992d",
+      "id": "54efd3e5-4204-4f9d-83da-243fc19174a7",
       "name": "Prepare YouTube Metadata"
     },
     {
@@ -1004,7 +1004,7 @@
         6264,
         5160
       ],
-      "id": "4d4d118d-9204-4d9b-8110-ee4a6cf1d56f",
+      "id": "9ef30e51-46f8-4429-9c61-9a7f07fc3b07",
       "name": "Read Final Video File"
     },
     {
@@ -1026,7 +1026,7 @@
         6488,
         5160
       ],
-      "id": "35a9d96c-6785-4a7f-b1e3-3fc620dbd938",
+      "id": "a028f568-8264-46a7-b1e6-1e4f81b4e5f5",
       "name": "Upload Video To YouTube",
       "credentials": {
         "youTubeOAuth2Api": {
@@ -1034,6 +1034,35 @@
           "name": "YouTube account 2"
         }
       }
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://www.googleapis.com/youtube/v3/videos?part=status",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "youTubeOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ id: $('Upload Video To YouTube').first().json.id, status: { privacyStatus: $('Upload Video To YouTube').first().json.status.privacyStatus, selfDeclaredMadeForKids: $('Upload Video To YouTube').first().json.status.selfDeclaredMadeForKids, containsSyntheticMedia: true } }) }}",
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        6600,
+        5040
+      ],
+      "id": "e00d5813-d711-4678-91f3-273c6f49cbbf",
+      "name": "Set YouTube Synthetic Content Label",
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "8H6dcwwlUwbkYxZ2",
+          "name": "YouTube account 2"
+        }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -1046,7 +1075,7 @@
         6712,
         5160
       ],
-      "id": "3b250cba-aed2-425b-861c-73129dc0237a",
+      "id": "eb28ca64-b24b-4e93-8fd8-4b1d18f43bd5",
       "name": "Read Thumbnail File"
     },
     {
@@ -1075,7 +1104,7 @@
         6936,
         5160
       ],
-      "id": "56c0ac8b-a4f1-4ae3-b885-555f62a3afad",
+      "id": "7736e501-26fb-4b66-a1d5-21a3a232f8d5",
       "name": "Set YouTube Thumbnail",
       "credentials": {
         "youTubeOAuth2Api": {
@@ -1097,8 +1126,8 @@
         6040,
         4680
       ],
-      "id": "ef838655-0e89-4ddb-acbf-6a7824fd7305",
-      "name": "Note 23191666"
+      "id": "d45afd4e-7e21-45b1-8ef5-a2fa781b3b8c",
+      "name": "Note ce542bc3"
     },
     {
       "parameters": {
@@ -1117,7 +1146,7 @@
         6264,
         5400
       ],
-      "id": "8b98355e-9c53-432e-8e97-fb4082162c03",
+      "id": "769b9b91-237f-4d86-a80d-aed8af647ed8",
       "name": "FB: Start Upload",
       "onError": "continueRegularOutput"
     },
@@ -1132,13 +1161,13 @@
         6488,
         5400
       ],
-      "id": "175ab8c6-b5fb-4f7b-8213-cb4045415424",
+      "id": "4eb4c30d-481c-4792-829d-4b4f4cd8319d",
       "name": "FB: Read Video File",
       "onError": "continueRegularOutput"
     },
     {
       "parameters": {
-        "method": "PUT",
+        "method": "POST",
         "url": "={{ $('FB: Start Upload').first().json.upload_url }}",
         "sendHeaders": true,
         "headerParameters": {
@@ -1170,7 +1199,7 @@
         6712,
         5400
       ],
-      "id": "2360a673-fc03-4b20-93a8-a60e9022b45b",
+      "id": "dcd290d7-a0e5-41b0-8775-6bbd5f384b5b",
       "name": "FB: Upload Video",
       "onError": "continueRegularOutput"
     },
@@ -1213,7 +1242,7 @@
         6936,
         5400
       ],
-      "id": "8185ea1d-e8ff-4862-a908-616f48aa8152",
+      "id": "a15d9c87-6d54-4902-81c0-6b62c61772d6",
       "name": "FB: Publish Reel",
       "onError": "continueRegularOutput"
     },
@@ -1227,7 +1256,7 @@
         6264,
         5640
       ],
-      "id": "d565a5f4-8178-422b-9f9d-7cf0ddbbea58",
+      "id": "ee7821c0-4463-4bd1-b2db-8793b3dfc281",
       "name": "TikTok: Load Tokens",
       "onError": "continueRegularOutput"
     },
@@ -1267,7 +1296,7 @@
         6488,
         5640
       ],
-      "id": "17e38885-d5e2-465e-8243-ecd2affe9f67",
+      "id": "26fc9aba-1fa4-4ae8-a5ae-aac758dd251f",
       "name": "TikTok: Refresh Token",
       "onError": "continueRegularOutput"
     },
@@ -1281,7 +1310,7 @@
         6712,
         5640
       ],
-      "id": "e931c0e7-07da-44d7-93da-266b23b9d73b",
+      "id": "ba5f4823-122d-4de6-8d27-d4a184d9c320",
       "name": "TikTok: Save New Tokens",
       "onError": "continueRegularOutput"
     },
@@ -1295,7 +1324,7 @@
         6936,
         5640
       ],
-      "id": "52eb9726-6fbf-4fa0-bdd9-44884c984c36",
+      "id": "ef5144d0-95da-4444-8dfa-5354693ffbcb",
       "name": "TikTok: Prepare Upload Info",
       "onError": "continueRegularOutput"
     },
@@ -1329,7 +1358,7 @@
         7160,
         5640
       ],
-      "id": "078ec414-73e6-42c4-bffe-349a344e8788",
+      "id": "cb4a4143-b3c8-442d-a2d9-2ab874f93c3b",
       "name": "TikTok: Init Upload",
       "onError": "continueRegularOutput"
     },
@@ -1344,7 +1373,7 @@
         7384,
         5640
       ],
-      "id": "82581777-fc25-4733-8715-6f8eda763889",
+      "id": "e5f084b3-9e24-4cd0-9949-384dd2c0def7",
       "name": "TikTok: Read Video File",
       "onError": "continueRegularOutput"
     },
@@ -1382,7 +1411,7 @@
         7608,
         5640
       ],
-      "id": "43e840ed-0ea9-4136-9f80-c2cdfe35fc74",
+      "id": "8df6894b-52c1-410e-aa4c-3370878a8560",
       "name": "TikTok: Upload Video",
       "onError": "continueRegularOutput"
     },
@@ -1416,7 +1445,7 @@
         7832,
         5640
       ],
-      "id": "9ea6cbf5-9f12-4199-82a5-c9f8adc00017",
+      "id": "f60eeecd-59ef-40e3-a435-c47ecdd213c8",
       "name": "TikTok: Check Status",
       "onError": "continueRegularOutput"
     },
@@ -1433,7 +1462,7 @@
         8056,
         5160
       ],
-      "id": "a110b6f9-ea7b-40b9-8607-2e2e234e3cf3",
+      "id": "110d8c3e-9d50-4f63-8be2-ccb607958f7d",
       "name": "Merge Social Uploads"
     }
   ],
@@ -2086,6 +2115,11 @@
     "Upload Video To YouTube": {
       "main": [
         [
+          {
+            "node": "Set YouTube Synthetic Content Label",
+            "type": "main",
+            "index": 0
+          },
           {
             "node": "Read Thumbnail File",
             "type": "main",
