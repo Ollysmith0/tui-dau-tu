@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TikTok OAuth Callback - Tui Dau Tu</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; max-width: 640px; margin: 60px auto; padding: 0 20px; line-height: 1.6; color: #222; }
+  h1 { font-size: 1.4rem; }
+  .box { background: #f3f3f3; border-radius: 8px; padding: 16px; margin: 16px 0; word-break: break-all; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .label { color: #666; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 4px; }
+  button { margin-top: 8px; padding: 8px 14px; border-radius: 6px; border: 1px solid #ccc; background: #fff; cursor: pointer; font-size: 0.9rem; }
+  button:hover { background: #f0f0f0; }
+  .error { color: #b00020; }
+</style>
+</head>
+<body>
+  <h1>TikTok authorization complete</h1>
+  <p>Copy the <code>code</code> value below and paste it back into the terminal running <code>tiktok_oauth_setup.py</code>.</p>
+
+  <div id="codeBox" class="box">
+    <div class="label">code</div>
+    <div id="codeValue">(reading URL...)</div>
+    <button id="copyBtn" type="button">Copy code</button>
+  </div>
+
+  <div id="stateBox" class="box" style="display:none">
+    <div class="label">state</div>
+    <div id="stateValue"></div>
+  </div>
+
+  <div id="errorBox" class="box error" style="display:none"></div>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+    const state = params.get('state');
+    const error = params.get('error');
+    const errorDescription = params.get('error_description');
+
+    if (error) {
+      document.getElementById('codeBox').style.display = 'none';
+      const box = document.getElementById('errorBox');
+      box.style.display = 'block';
+      box.textContent = 'Error: ' + error + (errorDescription ? ' - ' + errorDescription : '');
+    } else if (code) {
+      document.getElementById('codeValue').textContent = code;
+      if (state) {
+        document.getElementById('stateBox').style.display = 'block';
+        document.getElementById('stateValue').textContent = state;
+      }
+      document.getElementById('copyBtn').addEventListener('click', () => {
+        navigator.clipboard.writeText(code).then(() => {
+          document.getElementById('copyBtn').textContent = 'Copied!';
+        });
+      });
+    } else {
+      document.getElementById('codeBox').style.display = 'none';
+      const box = document.getElementById('errorBox');
+      box.style.display = 'block';
+      box.textContent = 'No "code" parameter found in the URL.';
+    }
+  </script>
+</body>
+</html>

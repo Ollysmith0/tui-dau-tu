@@ -6,29 +6,23 @@ TikTok - TikTok bat buoc phai co su dong y qua man hinh OAuth cua 1 tai
 khoan TikTok that su).
 
 YEU CAU TRUOC KHI CHAY:
-  1. Vao https://developers.tiktok.com/apps/ -> app cua ban -> Login Kit
-     -> them 1 "Redirect URI". URI nay BAT BUOC phai la https, tinh (khong
-     query string/fragment), vi du: https://abcd1234.ngrok-free.app/callback
+  1. Vao https://developers.tiktok.com/apps/ -> app cua ban -> Login Kit ->
+     "Redirect URI" (tab Web) -> them URI sau (dung CHINH XAC, khong doi):
+       https://ollysmith0.github.io/tui-dau-tu/tiktok-callback.html
+     Day la 1 trang tinh (static) da co san trong repo (docs/tiktok-callback.
+     html), tu doc "code" tu URL sau khi TikTok redirect ve va hien thi de
+     ban COPY THU CONG - khong can ngrok/server local nao ca.
 
-     Neu ban chua co domain https rieng, cach don gian nhat la dung ngrok:
-       brew install ngrok   # (hoac tai tu https://ngrok.com/download)
-       ngrok http 8765
-     ngrok se in ra 1 URL dang https://xxxx.ngrok-free.app - dung
-     https://xxxx.ngrok-free.app/callback lam Redirect URI o buoc tren, va
-     GIU CHO ngrok CHAY trong luc thuc hien script nay (no forward tu URL
-     https do ve may ban tren port 8765).
-
-  2. Set 3 bien moi truong (KHONG hardcode secret vao file nay):
+  2. Set 2 bien moi truong (KHONG hardcode secret vao file nay):
        export TIKTOK_CLIENT_KEY="..."       # client_key cua app
        export TIKTOK_CLIENT_SECRET="..."    # client_secret cua app (ROTATE lai
                                              # neu da tung dan vao noi khong an toan)
-       export TIKTOK_REDIRECT_URI="https://xxxx.ngrok-free.app/callback"
 
   3. Chay: python tiktok_oauth_setup.py
-     Script se in ra 1 URL - mo URL do trong trinh duyet, dang nhap TikTok,
-     bam dong y. Sau khi dong y, TikTok se redirect ve redirect_uri (qua
-     ngrok) va script (dang lang nghe tren 127.0.0.1:8765) se tu dong bat
-     duoc "code", doi lay access_token/refresh_token, va ghi ra
+     Script in ra 1 URL - mo URL do trong trinh duyet, dang nhap TikTok, bam
+     dong y. TikTok se redirect ve trang tiktok-callback.html, trang do hien
+     thi gia tri "code" - COPY gia tri do va PASTE lai vao terminal khi script
+     hoi. Script se doi code lay access_token/refresh_token va ghi ra
      tiktok_tokens.json trong BASE_DIR (duong dan xem trong Load Config cua
      generate_shorts_workflow.py).
 
@@ -36,75 +30,35 @@ Sau buoc nay, workflow n8n se TU DONG refresh access_token truoc moi lan
 dang video (khong can lam lai OAuth thu cong nay nua, tru khi refresh_token
 het han sau 365 ngay hoac ban bam "Revoke" quyen truy cap tu phia TikTok).
 """
-import http.server
 import json
 import os
 import secrets
 import sys
-import threading
+import urllib.error
 import urllib.parse
 import urllib.request
 
 CLIENT_KEY = os.environ.get("TIKTOK_CLIENT_KEY")
 CLIENT_SECRET = os.environ.get("TIKTOK_CLIENT_SECRET")
-REDIRECT_URI = os.environ.get("TIKTOK_REDIRECT_URI")
-LOCAL_PORT = int(os.environ.get("TIKTOK_LOCAL_PORT", "8765"))
+REDIRECT_URI = os.environ.get(
+    "TIKTOK_REDIRECT_URI",
+    "https://ollysmith0.github.io/tui-dau-tu/tiktok-callback.html",
+)
 BASE_DIR = os.environ.get("TIKTOK_BASE_DIR", "/Users/tuht1/tui-dau-tu-videos")
 TOKENS_FILE = os.path.join(BASE_DIR, "tiktok_tokens.json")
-SCOPE = "video.publish"
+SCOPE = "user.info.basic,video.publish"
 
-if not CLIENT_KEY or not CLIENT_SECRET or not REDIRECT_URI:
+if not CLIENT_KEY or not CLIENT_SECRET:
     print(
-        "Thieu bien moi truong. Can set ca 3: TIKTOK_CLIENT_KEY, "
-        "TIKTOK_CLIENT_SECRET, TIKTOK_REDIRECT_URI (xem huong dan o dau file nay).",
+        "Thieu bien moi truong. Can set TIKTOK_CLIENT_KEY va TIKTOK_CLIENT_SECRET "
+        "(xem huong dan o dau file nay).",
         file=sys.stderr,
     )
     sys.exit(1)
 
-_state = secrets.token_urlsafe(24)
-_result = {}
-
-
-class _CallbackHandler(http.server.BaseHTTPRequestHandler):
-    def log_message(self, fmt, *args):
-        pass  # im lang, khong spam log ra console
-
-    def do_GET(self):
-        parsed = urllib.parse.urlparse(self.path)
-        if parsed.path != urllib.parse.urlparse(REDIRECT_URI).path:
-            self.send_response(404)
-            self.end_headers()
-            return
-
-        qs = urllib.parse.parse_qs(parsed.query)
-        code = qs.get("code", [None])[0]
-        state = qs.get("state", [None])[0]
-        error = qs.get("error", [None])[0]
-
-        self.send_response(200)
-        self.send_header("Content-Type", "text/html; charset=utf-8")
-        self.end_headers()
-
-        if error:
-            _result["error"] = qs.get("error_description", [error])[0]
-            self.wfile.write(f"<h2>Loi: {_result['error']}</h2>".encode("utf-8"))
-        elif state != _state:
-            _result["error"] = "state khong khop - co the bi CSRF, huy bo."
-            self.wfile.write(b"<h2>Loi: state khong khop.</h2>")
-        elif not code:
-            _result["error"] = "khong nhan duoc 'code' tu TikTok."
-            self.wfile.write(b"<h2>Loi: thieu code.</h2>")
-        else:
-            _result["code"] = code
-            self.wfile.write(
-                b"<h2>Thanh cong! Ban co the dong tab nay va quay lai terminal.</h2>"
-            )
-
 
 def main():
-    server = http.server.HTTPServer(("127.0.0.1", LOCAL_PORT), _CallbackHandler)
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
-    thread.start()
+    state = secrets.token_urlsafe(24)
 
     auth_url = (
         "https://www.tiktok.com/v2/auth/authorize/"
@@ -112,28 +66,24 @@ def main():
         f"&scope={urllib.parse.quote(SCOPE)}"
         "&response_type=code"
         f"&redirect_uri={urllib.parse.quote(REDIRECT_URI, safe='')}"
-        f"&state={_state}"
+        f"&state={state}"
     )
 
     print("=" * 70)
     print("Mo URL nay trong trinh duyet, dang nhap TikTok va bam dong y:")
     print(auth_url)
     print("=" * 70)
-    print(f"(dang lang nghe tren 127.0.0.1:{LOCAL_PORT} qua redirect_uri = {REDIRECT_URI})")
+    print(
+        "Sau khi dong y, TikTok se redirect ve trang tiktok-callback.html - "
+        "trang do se hien thi gia tri 'code'. Copy gia tri do."
+    )
 
-    while "code" not in _result and "error" not in _result:
-        thread.join(timeout=0.5)
-        if not thread.is_alive():
-            break
-
-    server.shutdown()
-
-    if "error" in _result:
-        print(f"THAT BAI: {_result['error']}", file=sys.stderr)
+    code = input("Dan (paste) gia tri 'code' vao day roi Enter: ").strip()
+    if not code:
+        print("Khong co code, huy bo.", file=sys.stderr)
         sys.exit(1)
 
-    code = _result["code"]
-    print("Da nhan duoc code, dang doi lay access_token...")
+    print("Dang doi code lay access_token...")
 
     body = urllib.parse.urlencode(
         {
@@ -151,8 +101,12 @@ def main():
         headers={"Content-Type": "application/x-www-form-urlencoded"},
         method="POST",
     )
-    with urllib.request.urlopen(req, timeout=20) as resp:
-        token_data = json.loads(resp.read().decode("utf-8"))
+    try:
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            token_data = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        print(f"THAT BAI khi doi token (HTTP {e.code}): {e.read().decode('utf-8')}", file=sys.stderr)
+        sys.exit(1)
 
     if "access_token" not in token_data:
         print(f"THAT BAI khi doi token: {token_data}", file=sys.stderr)
@@ -177,3 +131,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
