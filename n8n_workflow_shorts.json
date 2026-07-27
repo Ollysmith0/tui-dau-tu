@@ -1,0 +1,2268 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## TOPIC PICKER (moi ngay)\n\nKHONG con phu thuoc mot minh vietstock.vn. Tim chu de TAM LY HOC hoac\nDAU TU TAI CHINH qua Tavily, chon 5 chu de/ngay (tron 2 nhom), moi chu\nde se thanh 1 video rieng (xem Loop Over Headlines ben duoi).\n\nDung pattern DETERMINISTIC (Code build query -> httpRequest Tavily truc\ntiep -> Code digest -> LLM tool-free) thay vi agent+tool ReAct, vi agent\n+tool voi Ollama local da tung bi lap vo han 'Max iterations reached' o\nworkflow khac trong repo nay.",
+        "height": 300,
+        "width": 520,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -320,
+        4820
+      ],
+      "id": "53f0db4e-75fd-43f4-af53-ea1107b46ccf",
+      "name": "Note af84075f"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 6
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -96,
+        5160
+      ],
+      "id": "3f1cd7a6-14a9-4aca-9b1f-bba7b0659ee9",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ==== CHINH LAI CHO DUNG MAY BAN NEU CAN ====\nconst BASE_DIR = '/Users/tuht1/tui-dau-tu-videos';\nconst VIDEOS_PER_DAY = 5;\nconst NICHES = ['tam_ly', 'dau_tu']; // luan phien 2 nhom noi dung\nconst CHANNEL_NAME = 'Tui dau tu';\n// --- Facebook Reels (Graph API) ---\n// FB_PAGE_ID: id so cua Facebook Page (KHONG phai username). Lay tu URL\n// dang facebook.com/profile.php?id=XXXXXXXXXXXX hoac Page Settings.\nconst FB_PAGE_ID = '61581849555663';\n// !!! DAN TOKEN THAT (page access token, da XOAY VONG/rotate lai) vao day.\n// KHONG commit file nay len git public khi da dien token that.\nconst FB_ACCESS_TOKEN = 'PASTE_YOUR_ROTATED_FACEBOOK_PAGE_ACCESS_TOKEN_HERE';\n// --- TikTok (Content Posting API - Direct Post) ---\n// Token nguoi dung (access_token/refresh_token) KHONG the lay chi tu\n// client_key+client_secret - TikTok bat buoc nguoi dung phai dong y qua\n// man hinh OAuth that su. Chay 1 lan: `python tiktok_oauth_setup.py`\n// (xem huong dan trong file do) de tao ra tiktok_tokens.json duoi day.\nconst TIKTOK_TOKENS_FILE = `${BASE_DIR}/tiktok_tokens.json`;\nconst TIKTOK_CLIENT_KEY = 'awmhgdzxwnuw47ix';\n// !!! DAN client_secret THAT (da XOAY VONG/rotate lai) vao day.\nconst TIKTOK_CLIENT_SECRET = 'PASTE_YOUR_ROTATED_TIKTOK_CLIENT_SECRET_HERE';\n// unaudited app -> chi duoc dang SELF_ONLY (rieng tu). Doi thanh\n// 'PUBLIC_TO_EVERYONE' sau khi app da duoc TikTok audit/duyet dang cong khai.\nconst TIKTOK_PRIVACY_LEVEL = 'SELF_ONLY';\n// ===============================================\n\nreturn [{\n  json: {\n    BASE_DIR, VIDEOS_PER_DAY, NICHES, channelName: CHANNEL_NAME,\n    FB_PAGE_ID, FB_ACCESS_TOKEN,\n    TIKTOK_TOKENS_FILE, TIKTOK_CLIENT_KEY, TIKTOK_CLIENT_SECRET, TIKTOK_PRIVACY_LEVEL,\n    today: new Date().toISOString().slice(0, 10)\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        128,
+        5160
+      ],
+      "id": "058b45c1-d212-4ce9-9e45-f8da78ca6ee8",
+      "name": "Load Config"
+    },
+    {
+      "parameters": {
+        "jsCode": "const query = 'Chu de dang duoc quan tam hom nay ve tam ly hoc ung dung (thau hieu ban than, cam xuc, thoi quen, moi quan he) va dau tu tai chinh ca nhan (chung khoan, bat dong san, tiet kiem, xu huong thi truong Viet Nam) trong 3 ngay qua.';\nreturn [{ json: { ...$json, topicsQuery: query } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        352,
+        5160
+      ],
+      "id": "611f4575-bb63-43f7-b248-8c64ef8ebe15",
+      "name": "Build Topics Query"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.tavily.com/search",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "tavilyApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: $json.topicsQuery, topic: 'news', search_depth: 'advanced', days: 3, max_results: 10, include_answer: false }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        576,
+        5160
+      ],
+      "id": "428a371d-c3aa-4113-97c0-faf84572728d",
+      "name": "Tavily Search (Topics)",
+      "credentials": {
+        "tavilyApi": {
+          "id": "FzCSQUCeWSUUEBab",
+          "name": "Tavily account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const prev = $('Build Topics Query').first().json;\nconst results = $json.results || [];\nconst digest = results.slice(0, 10).map((r, i) =>\n  (i + 1) + '. ' + r.title + '\\n   URL: ' + r.url + '\\n   ' + (r.content || '').slice(0, 300)\n).join('\\n\\n');\n\nreturn [{ json: { ...prev, topicsDigest: digest || 'Khong co ket qua tim kiem.' } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        5160
+      ],
+      "id": "039a87af-fc92-4348-8f33-85d5fa987596",
+      "name": "Parse Topics Results"
+    },
+    {
+      "parameters": {
+        "model": "gemma4:e4b",
+        "options": {
+          "format": "json"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        1024,
+        5384
+      ],
+      "id": "67ee515e-d5ca-4504-b8df-d7233107487a",
+      "name": "Ollama Chat Model (Topics)",
+      "credentials": {
+        "ollamaApi": {
+          "id": "LyoMMrEgRWUOqs0p",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Ban la Content Strategist cho kenh Shorts \"{{ $json.channelName }}\", noi dung xoay quanh HAI chu de: TAM LY HOC ung dung (nhan biet cam xuc, thoi quen, moi quan he, phat trien ban than) va DAU TU TAI CHINH ca nhan.\n\nNgay hom nay: {{ $json.today }}\n\nKet qua tim kiem Tavily (tin tuc/xu huong 3 ngay qua):\n{{ $json.topicsDigest }}\n\nDua vao ket qua tren, chon ra DUNG {{ $json.VIDEOS_PER_DAY }} chu de cho video Shorts hom nay, TRON ca hai nhom tam_ly va dau_tu (khong chon toan bo 1 nhom). Moi chu de PHAI co goc nhin/angle ro rang, khong trung lap y tuong voi nhau. source_url PHAI la URL that lay tu ket qua tim kiem o tren (khong bia).\n\nOutput CHI JSON, khong markdown, khong giai thich, dung schema:\n{\n  \"topics\": [\n    {\n      \"niche\": \"tam_ly\" hoac \"dau_tu\",\n      \"headline\": \"\",\n      \"angle\": \"\",\n      \"source_url\": \"\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1248,
+        5160
+      ],
+      "id": "ec4f9c35-df56-4430-b086-a7861aa155a1",
+      "name": "Pick Daily Topics Agent"
+    },
+    {
+      "parameters": {
+        "jsCode": "function parseAgentJson(raw) {\n  if (typeof raw !== 'string') return raw;\n  let t = raw.trim();\n  const fence = t.match(/^```(?:json)?\\s*([\\s\\S]*?)\\s*```$/i);\n  if (fence) t = fence[1];\n  if (!/^[\\{\\[]/.test(t.trim())) {\n    const m = t.match(/\\{[\\s\\S]*\\}/);\n    if (m) t = m[0];\n  }\n  return JSON.parse(t);\n}\n\nlet data;\ntry {\n  data = parseAgentJson($json.output);\n} catch (e) {\n  throw new Error('Pick Daily Topics Agent khong tra ve JSON hop le: ' + String($json.output).slice(0, 300));\n}\n\nif (!data.topics || !Array.isArray(data.topics) || data.topics.length === 0) {\n  throw new Error('Pick Daily Topics Agent thieu field topics[]');\n}\n\nconst cfg = $('Load Config').first().json;\nconst topics = data.topics.slice(0, cfg.VIDEOS_PER_DAY);\nreturn topics.map(t => ({\n  json: {\n    ...cfg,\n    niche: t.niche === 'tam_ly' ? 'tam_ly' : 'dau_tu',\n    headline: t.headline,\n    angle: t.angle || '',\n    sourceUrl: t.source_url || ''\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1472,
+        5160
+      ],
+      "id": "f1a64f6f-bc98-4a7d-a8e7-7eb8af049a53",
+      "name": "Parse & Split Topics"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1696,
+        5160
+      ],
+      "id": "a301a0e5-20e4-4c2c-9e56-759d48171a72",
+      "name": "Loop Over Headlines"
+    },
+    {
+      "parameters": {
+        "content": "## PER-VIDEO PIPELINE (chay 1 lan / chu de, trong Loop Over Headlines)\n\nVideo dai muc tieu 90-120 giay (~2 phut, van trong gioi han Shorts cua\nYouTube la <=3 phut). Research Agent + Screen Planner giu nguyen kien\ntruc agent+tool cu (chua thay loi trong workflow that), chi cap nhat\nprompt de tong quat hoa ngoai tin tuc tai chinh (them tam_ly).",
+        "height": 280,
+        "width": 520,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1920,
+        4820
+      ],
+      "id": "0ad3af17-7bba-4745-9c85-76e0feb3b213",
+      "name": "Note 72672ee1"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const item = $input.item.json;\nconst now = new Date();\nconst dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');\nconst slug = (item.headline || 'video')\n  .toLowerCase()\n  .normalize('NFD').replace(/[\\u0300-\\u036f]/g, '')\n  .replace(/đ/g, 'd').replace(/Đ/g, 'd')\n  .replace(/[^a-z0-9]+/g, '-')\n  .replace(/(^-|-$)/g, '')\n  .slice(0, 40);\nconst rand = Math.random().toString(36).slice(2, 7);\n\nreturn {\n  json: {\n    ...item,\n    videoId: `${dateStr}-${slug}-${rand}`,\n    channelName: item.channelName || 'Tui dau tu',\n    sourceUrl: item.sourceUrl || ''\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1976,
+        5160
+      ],
+      "id": "5cc4b1d7-0bb9-498b-a34a-2b3da7dfad6b",
+      "name": "Generate Video ID"
+    },
+    {
+      "parameters": {
+        "jsCode": "const path = require('path');\nconst fs = require('fs');\n\nconst BASE_DIR = $json.BASE_DIR;\n\nconst videoId = $json.videoId;\nconst videoDir = path.join(BASE_DIR, videoId);\nfs.mkdirSync(videoDir, { recursive: true });\n\nreturn [{\n  json: {\n    ...$json,\n    videoDir,\n    storyboardPath: path.join(videoDir, 'storyboard.json'),\n    renderScriptPath: path.join(videoDir, 'render_video.sh'),\n    thumbnailPath: path.join(videoDir, 'thumbnail_bg.jpg'),\n    subscribeClip: path.join(BASE_DIR, 'assets', 'subscribe-tui-dau-tu_final.mp4')\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2200,
+        5160
+      ],
+      "id": "fa352969-27be-4a74-9a1e-dec40b810a84",
+      "name": "Init Paths"
+    },
+    {
+      "parameters": {
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nstaticData.scenes = [];\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2424,
+        5160
+      ],
+      "id": "5aa2ee2b-755a-48cf-ba5b-378354754d70",
+      "name": "Reset Scene Store"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.headline }}",
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        2872,
+        5384
+      ],
+      "id": "6e2f06ba-a6a3-42de-a567-ca0519e02b73",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "model": "gemma4:e4b",
+        "options": {
+          "format": "json"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        2744,
+        5384
+      ],
+      "id": "0f5eae16-f8cd-49fd-89dd-8522c8734ce4",
+      "name": "Ollama Chat Model (Research)",
+      "credentials": {
+        "ollamaApi": {
+          "id": "LyoMMrEgRWUOqs0p",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "query": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Query', `Use this tool ONLY when additional background research is needed.\n\nNever use this tool to open or read the original article.\n\nSearch using natural language.\n\nNever search using only a URL.\n\nNever search using only site: operators.\n\nAlways include descriptive keywords.`, 'string') }}",
+        "options": {}
+      },
+      "type": "@tavily/n8n-nodes-tavily.tavilyTool",
+      "typeVersion": 1,
+      "position": [
+        2996,
+        5384
+      ],
+      "id": "d3263d4a-da0b-4d4b-a0ca-dbe2750144ff",
+      "name": "Search in Tavily",
+      "credentials": {
+        "tavilyApi": {
+          "id": "FzCSQUCeWSUUEBab",
+          "name": "Tavily account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Ban la BIEN TAP VIEN kenh Shorts \"{{ $json.channelName }}\", chuyen san xuat video NGAN (duoi 2 phut) ve TAM LY HOC ung dung hoac DAU TU TAI CHINH ca nhan, dinh dang DOC 9:16.\n\nChu de hom nay (niche = {{ $json.niche }}):\nHeadline: {{ $json.headline }}\nGoc nhin goi y: {{ $json.angle }}\nNguon tham khao: {{ $json.sourceUrl }}\n\nNeu niche la 'tam_ly': tap trung vao mot insight tam ly cu the, de ap dung ngay vao cuoc song (cam xuc, thoi quen, giao tiep, tu duy). Neu niche la 'dau_tu': tap trung vao mot su kien/kien thuc dau tu tai chinh cu the, so lieu ro rang, khong phan tich vi mo lan man.\n\nDung tool Tavily NEU can them thong tin nen dang tin cay. Video dai muc tieu 90-120 giay - can du chat lieu cho 8-14 scene, khong chi 1 y ngan gon. Viet narration cuon hut, nhip nhanh, giong nguoi chia se that su chu khong doc bao cao kho khan. Bo hoan toan phan chao hoi dai dong, di thang vao noi dung ngay tu giay dau tien.\n\nOutput CHI JSON, khong markdown, khong giai thich:\n{\n  \"title\": \"\",\n  \"description\": \"\",\n  \"tags\": [],\n  \"hashtags\": [],\n  \"report\": {}\n}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        2872,
+        5160
+      ],
+      "id": "3d3384ea-39bc-4a06-9503-b8e0ee749896",
+      "name": "Research Agent"
+    },
+    {
+      "parameters": {
+        "model": "gemma4:e4b",
+        "options": {
+          "format": "json"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        3352,
+        5040
+      ],
+      "id": "3e227f13-eab4-4932-9aac-a910fcd99fab",
+      "name": "Ollama Chat Model (Planner)",
+      "credentials": {
+        "ollamaApi": {
+          "id": "LyoMMrEgRWUOqs0p",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Ban la Senior Storyboard Director cho kenh YouTube SHORTS \"{{ $('Generate Video ID').first().json.channelName }}\" (noi dung tam ly hoc hoac dau tu tai chinh, tuy niche). Video dinh dang DOC 9:16 - day la YOUTUBE SHORTS. Tong do dai BAT BUOC nam trong khoang 90-120 giay (tong duration cac scene cong lai KHONG duoc vuot qua 120 giay va KHONG duoc duoi 90 giay - day la thay doi so voi ban truoc chi 45-60s). Dung 8-14 scene, moi scene 8-12 giay. Hook phai xuat hien ngay trong 3 giay dau tien. Bo hoan toan phan chao hoi dai dong, di thang vao noi dung. Narration phai cuon hut, nhip nhanh, cau ngan - giong nguoi chia se that su, KHONG doc bao cao kho khan.\n\nQUAN TRONG - MOI SCENE DUNG ANH THAT tai ve tu Tavily (uu tien, anh gan dung su kien/nhan vat/khai niem that) hoac Pexels (anh stock du phong).\n\nVoi MOI scene, ban phai cung cap:\n- \"camera\": BAT BUOC chon 1 trong cac gia tri sau va KHONG BAO GIO de trong hay dung 'static': slow-zoom, push-in, pull-out, pan-left, pan-right, parallax. Moi scene PHAI co chuyen dong zoom/pan ro rang, khong duoc dung hinh tinh.\n- asset gom 2 query:\n  + \"event_query\": tu khoa tim ANH THAT PHAI mo ta CHINH XAC dieu dang duoc narration cua SCENE NAY nhac toi (ten nguoi/su kien/khai niem/hanh dong cu the - KHONG duoc chung chung khong lien quan). Dung cho Tavily.\n  + \"stock_query\": mo ta tieng Anh chung chung kieu anh stock lien quan chu de cua scene (VD voi tam_ly: 'person reflecting quietly at window'; voi dau_tu: 'stock exchange trading floor') de du phong tren Pexels.\n\nINPUT (JSON tu Research Agent):\n{{ $json.output }}\n\nReturn ONLY JSON theo dung schema sau, khong markdown, khong giai thich, khong them key nao khac:\n{\n  \"video_style\": \"shorts_news\",\n  \"theme\": \"modern\",\n  \"aspect_ratio\": \"9:16\",\n  \"fps\": 30,\n  \"scenes\": [\n    {\n      \"scene_type\": \"\", \"headline\": \"\", \"narration\": \"\", \"duration\": 10,\n      \"camera\": \"\", \"animation\": \"\", \"transition\": \"\", \"subtitle_style\": \"\",\n      \"highlight_words\": [], \"importance\": \"medium\",\n      \"asset\": { \"event_query\": \"\", \"stock_query\": \"\" }\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        3352,
+        5160
+      ],
+      "id": "4b379133-997e-4574-8fce-d70c1685a0ff",
+      "name": "Screen Planner"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().flatMap(item => {\n  let raw = item.json.output;\n  if (typeof raw === 'string') {\n    raw = raw.trim();\n    const fenceMatch = raw.match(/^```(?:json)?\\s*([\\s\\S]*?)\\s*```$/i);\n    if (fenceMatch) raw = fenceMatch[1];\n    if (!/^[\\{\\[]/.test(raw.trim())) {\n      const jsonMatch = raw.match(/\\{[\\s\\S]*\\}/);\n      if (jsonMatch) raw = jsonMatch[0];\n    }\n  }\n\n  let data;\n  try {\n    data = JSON.parse(raw);\n  } catch (e) {\n    const preview = String(item.json.output || '').slice(0, 300);\n    throw new Error(`Screen Planner KHONG tra JSON hop le.\\n--- 300 ky tu dau ---\\n${preview}`);\n  }\n\n  if (!data.scenes || !Array.isArray(data.scenes)) {\n    throw new Error('Screen Planner tra JSON nhung thieu field \"scenes\" dang mang.');\n  }\n\n  const cleanScenes = data.scenes.filter(scene => {\n    const text = (scene.narration || '').trim();\n    return text.length > 0 && !/^\\(.*\\)$/.test(text);\n  });\n\n  const total = cleanScenes.reduce((s, sc) => s + (Number(sc.duration) || 0), 0);\n  // FIX (workflow bi stuck/that bai toan bo pipeline chi vi uoc luong lech vai\n  // giay): field 'duration' o day chi la UOC LUONG cua Screen Planner - thoi\n  // luong THAT cua video duoc quyet dinh boi audio TTS that (ffprobe do truc\n  // tiep trong Build Render Script), KHONG phai field nay (xem duration: scene.\n  // duration ben duoi chi de luu vao storyboard.json, khong dung de dung clip).\n  // Vi vay KHONG throw Error lam dung ca pipeline (mat het cong Research Agent +\n  // Screen Planner da chay) chi vi model local uoc luong lech nhe so voi muc\n  // tieu 90-120s - chi canh bao va van tiep tuc chay binh thuong. Chi throw that\n  // su neu tong qua bat thuong (gan nhu chac chan la output loi/thieu scene).\n  if (total < 20 || total > 200) {\n    throw new Error('Tong duration UOC LUONG cua scenes = ' + total.toFixed(1) + 's, qua bat thuong (ngoai 20-200s) - Screen Planner co the da tra ve output loi/thieu scene.');\n  }\n  if (total < 90 || total > 120) {\n    console.log('[CANH BAO] Tong duration UOC LUONG cua scenes = ' + total.toFixed(1) + 's, ngoai muc tieu 90-120s. Van tiep tuc vi thoi luong THAT cua video phu thuoc audio TTS thuc te, khong phai field uoc luong nay.');\n  }\n\n  return cleanScenes.map(scene => ({\n    json: {\n      video_style: data.video_style,\n      theme: data.theme,\n      aspect_ratio: data.aspect_ratio,\n      fps: data.fps,\n      ...scene,\n      camera: (scene.camera && scene.camera !== 'static') ? scene.camera : 'slow-zoom'\n    }\n  }));\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3800,
+        5160
+      ],
+      "id": "d31b24c5-bcd2-46f0-aad6-5d04a3369c8e",
+      "name": "normalize scene data"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://0.0.0.0:8002/tts",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ text: $json.narration, voice: 'infore', silence_duration: 0.2, speech_rate: 1.15 }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          },
+          "timeout": 60000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        4024,
+        5160
+      ],
+      "id": "a1a16d42-1a43-4652-a4a6-8b7ebff9c1aa",
+      "name": "Generate audio (vietTTS)"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map((item, index) => ({\n  json: { ...item.json, sceneId: index + 1 },\n  binary: { audio: item.binary.data }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4248,
+        5160
+      ],
+      "id": "bb45df23-c3b5-44a1-8a4b-8e3059608a66",
+      "name": "attach audio to scene"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        4472,
+        5160
+      ],
+      "id": "dc13aee3-57e7-462e-8e83-e786fdac20c8",
+      "name": "Loop Over Scenes"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const scene = $input.item.json;\nconst videoDir = $('Init Paths').first().json.videoDir;\nconst sceneId = scene.sceneId;\n\nconst audioPath = `${videoDir}/scene_${sceneId}_audio.wav`;\nconst imagePath = `${videoDir}/scene_${sceneId}_image.jpg`;\n\nconst eventQuery = (scene.asset && scene.asset.event_query) || scene.headline || (scene.narration || '').slice(0, 80);\nconst stockQuery = (scene.asset && scene.asset.stock_query) || ($('Generate Video ID').first().json.niche === 'tam_ly' ? 'calm lifestyle emotion background' : 'financial news background');\n\nreturn {\n  json: { ...scene, audioPath, imagePath, eventQuery, stockQuery },\n  binary: $input.item.binary\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4696,
+        4872
+      ],
+      "id": "76b79be1-2589-4dc8-9dfc-8ca61ae8b75c",
+      "name": "Build Image Queries"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ $json.audioPath }}",
+        "dataPropertyName": "audio",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        4920,
+        4872
+      ],
+      "id": "c97c8510-3411-4bc7-ae76-7fdc14bc0d92",
+      "name": "Write audio file"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.tavily.com/search",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "tavilyApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: $('Build Image Queries').first().json.eventQuery, search_depth: 'basic', include_images: true, include_image_descriptions: false, max_results: 3 }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        5144,
+        4872
+      ],
+      "id": "5b755237-220d-45dd-97b7-6757bb61e3a5",
+      "name": "Tavily Image Search",
+      "credentials": {
+        "tavilyApi": {
+          "id": "FzCSQUCeWSUUEBab",
+          "name": "Tavily account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const bad = (url) => {\n  if (!url) return true;\n  url = url.toLowerCase();\n  return (\n    url.endsWith('.svg') ||\n    url.includes('.svg?') ||\n    url.includes('logo') ||\n    url.includes('icon') ||\n    url.includes('favicon') ||\n    url.includes('lookaside.instagram') ||\n    url.includes('instagram.com')\n  );\n};\n\nlet imageUrl = null;\n\nif (Array.isArray($json.results)) {\n  for (const result of $json.results) {\n    if (!Array.isArray(result.images)) continue;\n    imageUrl = result.images.find(u => !bad(u));\n    if (imageUrl) break;\n  }\n}\n\nif (!imageUrl && Array.isArray($json.images)) {\n  imageUrl = $json.images.find(u => !bad(u));\n}\n\nconst scene = $('Build Image Queries').first().json;\n\nreturn {\n  json: { ...scene, hasTavilyImage: !!imageUrl, tavilyImageUrl: imageUrl }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5368,
+        4872
+      ],
+      "id": "26ae314c-56e8-499e-8701-a7ae92c9b458",
+      "name": "Check Tavily Images"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "cond1",
+              "leftValue": "={{ $json.hasTavilyImage }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        5592,
+        4872
+      ],
+      "id": "2ac559fb-27f4-4e3f-ae7c-2f6f75f656ad",
+      "name": "Has Tavily Image?"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.tavilyImageUrl }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "file"
+            }
+          },
+          "timeout": 12000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        5816,
+        4800
+      ],
+      "id": "405491be-8030-438a-b44b-00df0ac1640f",
+      "name": "Download Image (Tavily)",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "function getImageDimensions(buf) {\n  // JPEG: scan markers for a Start-Of-Frame segment (SOF0-3) which holds height/width.\n  if (buf.length > 4 && buf[0] === 0xFF && buf[1] === 0xD8) {\n    let offset = 2;\n    while (offset + 9 < buf.length) {\n      if (buf[offset] !== 0xFF) { offset++; continue; }\n      const marker = buf[offset + 1];\n      if (marker >= 0xC0 && marker <= 0xC3) {\n        return { width: buf.readUInt16BE(offset + 7), height: buf.readUInt16BE(offset + 5) };\n      }\n      const segLength = buf.readUInt16BE(offset + 2);\n      offset += 2 + segLength;\n    }\n    return null;\n  }\n  // PNG: IHDR chunk is always the first chunk, right after the 8-byte signature.\n  if (buf.length > 24 && buf[0] === 0x89 && buf[1] === 0x50) {\n    return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };\n  }\n  return null; // WEBP dimension parsing not implemented - skip the resolution check for it.\n}\n\nconst MIN_DIMENSION = 720; // yeu cau anh that >=720p (theo chieu nho hon)\n\n// Lay scene tu node 'Check Tavily Images' (KHONG phai $input.item.json) vi\n// Download Image (Tavily) co the that bai (timeout/mat ket noi) va van tiep\n// tuc chay (onError=continueRegularOutput) voi json bi thay the (vd {error}),\n// lam mat het cac field scene that su (sceneId, imagePath, stockQuery,...).\nconst scene = $('Check Tavily Images').first().json;\nconst binary = $input.item.binary && $input.item.binary.data;\nlet isValid = false;\n\nif (binary) {\n  const buffer = await this.helpers.getBinaryDataBuffer(0, 'data');\n  const isJpeg = buffer.length > 4 && buffer[0] === 0xFF && buffer[1] === 0xD8;\n  const isPng = buffer.length > 8 && buffer[0] === 0x89 && buffer[1] === 0x50;\n  const isWebp = buffer.length > 12 && buffer.slice(8, 12).toString() === 'WEBP';\n  const dims = getImageDimensions(buffer);\n  const meetsResolution = isWebp ? true : (dims ? Math.min(dims.width, dims.height) >= MIN_DIMENSION : false);\n  isValid = buffer.length > 2000 && (isJpeg || isPng || isWebp) && meetsResolution;\n}\n\nreturn { json: { ...scene, tavilyImageValid: isValid }, binary: $input.item.binary };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6040,
+        4800
+      ],
+      "id": "324eae61-506b-49df-92ff-1e5777df48aa",
+      "name": "Validate Tavily Image"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "5008f102-b4dd-4da4-b2ad-e993463b4f8a",
+              "leftValue": "={{ $json.tavilyImageValid }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        6264,
+        4800
+      ],
+      "id": "b6e7e0e8-4ad9-40ea-80c8-4385ff5e4890",
+      "name": "Is Tavily Image Valid?"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.pexels.com/v1/search?query={{ encodeURIComponent($json.stockQuery) }}&orientation=portrait&per_page=5&size=large",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        6488,
+        4944
+      ],
+      "id": "4971cdcc-5c03-4841-9fe2-43188af9a64b",
+      "name": "Pexels Image Search",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "MpKrAHcdRHV5PnRV",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const MIN_DIMENSION = 720;\nconst photos = $json.photos || [];\n// uu tien anh >=720p (Pexels tra ve width/height that trong response);\n// neu khong co anh nao dat, dung anh dau tien de khong lam gian doan pipeline.\nconst hq = photos.find(p => Math.min(p.width || 0, p.height || 0) >= MIN_DIMENSION);\nconst photo = hq || photos[0];\nconst imageUrl = photo && photo.src && (photo.src.large2x || photo.src.large || photo.src.original);\n\nconst scene = $('Check Tavily Images').first().json;\n\nif (!imageUrl) {\n  throw new Error('Pexels khong tra ve anh phu hop cho query: ' + (scene.stockQuery || ''));\n}\n\nreturn { json: { ...scene, pexelsImageUrl: imageUrl } };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6712,
+        4944
+      ],
+      "id": "400440ab-da3f-4255-8bc0-fac0fe414aee",
+      "name": "Extract Pexels Image URL"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.pexelsImageUrl }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        6936,
+        4944
+      ],
+      "id": "f64beb3d-4a63-49ff-8931-5ff24b74e696",
+      "name": "Download Image (Pexels)"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const scene = $('Check Tavily Images').first().json;\n\nconst staticData = $getWorkflowStaticData('global');\nif (!staticData.scenes) staticData.scenes = [];\nstaticData.scenes.push({\n  sceneId: scene.sceneId,\n  scene_type: scene.scene_type,\n  headline: scene.headline,\n  narration: scene.narration,\n  duration: scene.duration,\n  camera: scene.camera,\n  animation: scene.animation,\n  transition: scene.transition,\n  subtitle_style: scene.subtitle_style,\n  highlight_words: scene.highlight_words,\n  importance: scene.importance,\n  audioPath: scene.audioPath,\n  imagePath: scene.imagePath\n});\n\nreturn {\n  json: scene,\n  binary: { image: $input.item.binary.data }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        7160,
+        4872
+      ],
+      "id": "9d663d31-8942-48ae-8a22-c3464d769590",
+      "name": "Finalize Scene Image"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ $json.imagePath }}",
+        "dataPropertyName": "image",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        7384,
+        5040
+      ],
+      "id": "8287a6c8-b5e6-4ad4-92ea-632356626459",
+      "name": "Write image file"
+    },
+    {
+      "parameters": {
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nconst videoId = $('Generate Video ID').first().json.videoId;\n\nconst storyboard = {\n  channel: $('Generate Video ID').first().json.channelName,\n  videoId,\n  aspect_ratio: '9:16',\n  fps: 30,\n  scenes: (staticData.scenes || []).sort((a, b) => a.sceneId - b.sceneId)\n};\n\nconst jsonStr = JSON.stringify(storyboard, null, 2);\nconst buffer = Buffer.from(jsonStr, 'utf-8');\n\nreturn [{\n  json: { videoId, storyboardPath: $('Init Paths').first().json.storyboardPath },\n  binary: { storyboard: await this.helpers.prepareBinaryData(buffer, 'storyboard.json', 'application/json') }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4696,
+        5160
+      ],
+      "id": "4de536d4-3ca3-4a1b-a83a-7df9b93433c4",
+      "name": "prepare storyboard.json"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ $json.storyboardPath }}",
+        "dataPropertyName": "storyboard",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        4920,
+        5160
+      ],
+      "id": "cc1c2440-d80b-4872-a354-010115503dab",
+      "name": "Write storyboard.json"
+    },
+    {
+      "parameters": {
+        "jsCode": "// !!! DOI duong dan SUBSCRIBE_CLIP cho dung may ban neu can !!!\n// !!! DOI SCENE_TIMEOUT_SEC neu may ban render cham/nhanh hon muc mac dinh !!!\n// Dinh dang SHORTS doc 9:16 (1080x1920)\nconst W = 1080, H = 1920, FPS = 30;\n// FIX (chuyen canh/zoom bi rung lac nhe - zoompan jitter): filter 'zoompan'\n// cua ffmpeg lam tron x/y ve so nguyen MOI FRAME. Voi zoom cham (vd +0.0008/\n// frame), buoc di chuyen thuc te duoi 1 pixel/frame nen bi lam tron thanh cac\n// buoc nhay 0-hoac-1-pixel khong deu, tao cam giac 'giat/rung' nhe (da kiem\n// chung: do coefficient-of-variation cua frame-diff giam ~50% khi supersample\n// 2x roi downscale, so voi lam zoompan truc tiep o do phan giai dich). Cach\n// khac phuc chuan: cho zoompan chay tren canvas LON HON (SS lan), roi scale\n// xuong kich thuoc that o buoc cuoi - luoi pixel min hon lam sai so lam tron\n// tro nen nho hon nhieu (duoi nguong nhin thay) sau khi downscale.\nconst SS = 2;\nconst WS = W * SS, HS = H * SS;\nconst SCENE_TIMEOUT_SEC = 300;\nconst PRESET = 'veryfast';\nconst staticData = $getWorkflowStaticData('global');\nconst scenes = (staticData.scenes || []).slice().sort((a, b) => a.sceneId - b.sceneId);\nconst videoId = $('Generate Video ID').first().json.videoId;\nconst dir = $('Init Paths').first().json.videoDir;\nconst subscribeClip = $('Init Paths').first().json.subscribeClip;\n\nfunction zoompanExpr(camera) {\n  switch (camera) {\n    case 'push-in':\n      return `zoompan=z='min(1+0.20*on/$FRAMES,1.20)':d=$FRAMES:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=${WS}x${HS}:fps=${FPS}`;\n    case 'pull-out':\n      return `zoompan=z='max(1.20-0.20*on/$FRAMES,1.0)':d=$FRAMES:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=${WS}x${HS}:fps=${FPS}`;\n    case 'pan-left':\n      return `zoompan=z=1.15:d=$FRAMES:x='(iw-iw/zoom)*(1-on/$FRAMES)':y='ih/2-(ih/zoom/2)':s=${WS}x${HS}:fps=${FPS}`;\n    case 'pan-right':\n      return `zoompan=z=1.15:d=$FRAMES:x='(iw-iw/zoom)*(on/$FRAMES)':y='ih/2-(ih/zoom/2)':s=${WS}x${HS}:fps=${FPS}`;\n    case 'parallax':\n      return `zoompan=z='min(zoom+0.0010,1.25)':d=$FRAMES:x='(iw-iw/zoom)*(on/$FRAMES)':y='ih/2-(ih/zoom/2)':s=${WS}x${HS}:fps=${FPS}`;\n    case 'slow-zoom':\n    default:\n      // FIX (khong con 'static' khong zoom): moi scene LUON co Ken Burns zoom nhe,\n      // ke ca khi model tra ve gia tri camera khong xac dinh.\n      return `zoompan=z='min(zoom+0.0008,1.15)':d=$FRAMES:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=${WS}x${HS}:fps=${FPS}`;\n  }\n}\n\n// Bo chu (caption) chay theo giong doc: dung dinh dang ASS (khong phai SRT) voi\n// PlayResX/PlayResY khai bao DUNG bang kich thuoc khung hinh (1080x1920). SRT\n// chuyen sang ASS ngam dinh cua ffmpeg co ty le scale khong nhat quan (da kiem\n// chung thuc te: chu bi phong to qua muc, tran het len tren khung hinh). O day\n// KHONG tu wrap dong nua - de libass tu dong wrap (WrapStyle=0) theo dung\n// chieu rong that cua khung hinh, tranh bi mat noi dung do gioi han cung 2 dong.\nconst assHeader = [\n  '[Script Info]',\n  'ScriptType: v4.00+',\n  `PlayResX: ${W}`,\n  `PlayResY: ${H}`,\n  'WrapStyle: 0',\n  'ScaledBorderAndShadow: yes',\n  '',\n  '[V4+ Styles]',\n  'Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding',\n  'Style: Default,Arial,46,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,-1,0,0,0,100,100,0,0,1,3,1,2,60,60,140,1',\n  '',\n  '[Events]',\n  'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text'\n].join('\\n');\n\nfunction cleanCaption(text) {\n  return String(text || '').trim().replace(/\\s+/g, ' ');\n}\n// Escape ky tu dac biet cua ASS ({ } co the bi hieu nham la override tag) roi\n// den ky tu dac biet cua bash heredoc KHONG quote ($ va backtick) - can de\n// SUB_START/SUB_END van duoc noi suy binh thuong trong heredoc.\nfunction escapeForHeredoc(text) {\n  return String(text)\n    .replace(/\\\\/g, '\\\\\\\\')\n    .replace(/\\{/g, '(').replace(/\\}/g, ')')\n    .replace(/`/g, '\\\\`').replace(/\\$/g, '\\\\$');\n}\n\nlet script = `#!/bin/bash\nset -e\n# ffmpeg chuan cua Homebrew KHONG co libass/freetype (thieu filter 'ass').\n# Uu tien dung ffmpeg-full (co libass) neu da cai, fallback ve ffmpeg mac dinh.\nif [ -d \"/opt/homebrew/opt/ffmpeg-full/bin\" ]; then\n  export PATH=\"/opt/homebrew/opt/ffmpeg-full/bin:$PATH\"\nfi\ncd \"${dir}\"\n\nexec 2>> \"${dir}/ffmpeg_error.log\"\n\nPROGRESS_LOG=\"${dir}/render_progress.log\"\n> \"$PROGRESS_LOG\"\n\nSUBTITLE_FILE=\"${dir}/subtitles.ass\"\ncat > \"$SUBTITLE_FILE\" << 'ASSHEADEREOF'\n${assHeader}\nASSHEADEREOF\nSUB_OFFSET=0\n\nSUBSCRIBE_SRC=\"${subscribeClip}\"\nSUBSCRIBE_NORMALIZED=\"${dir}/subscribe_normalized.mp4\"\nif [ ! -f \"$SUBSCRIBE_NORMALIZED\" ]; then\n  echo \"[$(date '+%H:%M:%S')] Chuan hoa clip subscribe cho khop ${W}x${H}@${FPS}fps\" | tee -a \"$PROGRESS_LOG\"\n  ffmpeg -y -hide_banner -loglevel error -i \"$SUBSCRIBE_SRC\" -vf \"scale=${W}:${H}:force_original_aspect_ratio=decrease,pad=${W}:${H}:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1,fps=${FPS}\" -c:v libx264 -preset ${PRESET} -crf 18 -pix_fmt yuv420p -af \"volume=0.8\" -c:a aac -b:a 192k -ar 44100 -ac 2 \"$SUBSCRIBE_NORMALIZED\"\nfi\n`;\n\nlet idx = 0;\nconst processed = [];\nfor (const scene of scenes) {\n  idx++;\n  const id = scene.sceneId;\n  const img = `scene_${id}_image.jpg`;\n  const audio = `scene_${id}_audio.wav`;\n  const out = `scene_${id}_clip.mp4`;\n  const filter = zoompanExpr(scene.camera);\n  const captionText = escapeForHeredoc(cleanCaption(scene.narration));\n  processed.push(out);\n\n  script += `\necho \"[$(date '+%H:%M:%S')] BAT DAU scene ${idx}/${scenes.length} (id=${id}, camera=${scene.camera})\" | tee -a \"$PROGRESS_LOG\"\n\nAUDIO_DUR=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 \"${audio}\")\nDUR=$(awk -v d=\"$AUDIO_DUR\" 'BEGIN{printf \"%.2f\", d+0.6}')\nFRAMES=$(awk -v d=\"$DUR\" 'BEGIN{printf \"%d\", d*${FPS}}')\n\nif ! timeout ${SCENE_TIMEOUT_SEC}s ffmpeg -y -hide_banner -loglevel error -loop 1 -i \"${img}\" -i \"${audio}\" -filter_complex \"[0:v]scale=${WS}:${HS}:force_original_aspect_ratio=increase,crop=${WS}:${HS},setsar=1,${filter},scale=${W}:${H}:flags=lanczos[v]\" -map \"[v]\" -map 1:a -c:v libx264 -preset ${PRESET} -crf 18 -pix_fmt yuv420p -r ${FPS} -c:a aac -b:a 192k -ar 44100 -ac 2 -t \"$DUR\" \"${out}\"; then\n  echo \"[$(date '+%H:%M:%S')] !!! Scene ${id} loi hoac vuot qua ${SCENE_TIMEOUT_SEC}s\" | tee -a \"$PROGRESS_LOG\"\n  exit 1\nfi\n\necho \"[$(date '+%H:%M:%S')] XONG scene ${idx}/${scenes.length}\" | tee -a \"$PROGRESS_LOG\"\n\nSUB_START=$(awk -v s=\"$SUB_OFFSET\" 'BEGIN{h=int(s/3600);m=int((s%3600)/60);sec=s-h*3600-m*60;printf \"%d:%02d:%05.2f\", h, m, sec}')\nSUB_END=$(awk -v s=\"$SUB_OFFSET\" -v d=\"$DUR\" 'BEGIN{e=s+d;h=int(e/3600);m=int((e%3600)/60);sec=e-h*3600-m*60;printf \"%d:%02d:%05.2f\", h, m, sec}')\ncat >> \"$SUBTITLE_FILE\" << SUBEOF\nDialogue: 0,$SUB_START,$SUB_END,Default,,0,0,0,,${captionText}\nSUBEOF\nSUB_OFFSET=$(awk -v o=\"$SUB_OFFSET\" -v d=\"$DUR\" 'BEGIN{printf \"%.3f\", o+d}')\n`;\n}\n\n// FIX (dong bo tieng click voi animation subscribe): dung concat FILTER\n// (-filter_complex ... concat=n=N:v=1:a=1) thay vi concat DEMUXER (-f concat).\n// Demuxer concat roi re-encode lai TOAN BO co the lam lech PTS nhe o ranh gioi\n// giua cac doan (dac biet ro o doan cuoi - clip subscribe), vi no khong quan ly\n// timestamp tung input rieng biet trong 1 lan encode duy nhat nhu concat filter.\n//\n// Sau concat, chain them filter 'ass' de burn caption (subtitles.ass, da duoc\n// ghi day du sau vong for tren) dong bo voi giong doc. Dung filter 'ass' (khong\n// phai 'subtitles') vi file da la ASS voi PlayResX/PlayResY dung bang khung\n// hinh - khong can (va khong nen) truyen them original_size/force_style nua.\nconst allClips = [...processed, 'subscribe_normalized.mp4'];\nconst inputs = allClips.map(f => `-i \"${f}\"`).join(' ');\nlet filterInputs = '';\nfor (let i = 0; i < allClips.length; i++) filterInputs += `[${i}:v][${i}:a]`;\nconst filterComplex = `${filterInputs}concat=n=${allClips.length}:v=1:a=1[concatv][outa];[concatv]ass=subtitles.ass[outv]`;\n\nscript += `\necho \"[$(date '+%H:%M:%S')] BAT DAU ghep video cuoi (concat filter + burn caption)\" | tee -a \"$PROGRESS_LOG\"\n\nif ! timeout ${SCENE_TIMEOUT_SEC}s ffmpeg -y -hide_banner -loglevel error ${inputs} -filter_complex \"${filterComplex}\" -map \"[outv]\" -map \"[outa]\" -c:v libx264 -preset ${PRESET} -crf 18 -pix_fmt yuv420p -r ${FPS} -c:a aac -b:a 192k -ar 44100 -ac 2 -movflags +faststart \"${videoId}_final.mp4\"; then\n  echo \"[$(date '+%H:%M:%S')] !!! Ghep video cuoi loi hoac vuot qua ${SCENE_TIMEOUT_SEC}s\" | tee -a \"$PROGRESS_LOG\"\n  exit 1\nfi\n\necho \"[$(date '+%H:%M:%S')] DONE: ${dir}/${videoId}_final.mp4\" | tee -a \"$PROGRESS_LOG\"\n`;\n\nconst buffer = Buffer.from(script, 'utf-8');\n\nreturn [{\n  json: {\n    videoId,\n    scriptPath: `${dir}/render_video.sh`,\n    finalVideoPath: `${dir}/${videoId}_final.mp4`,\n    progressLogPath: `${dir}/render_progress.log`\n  },\n  binary: { script: await this.helpers.prepareBinaryData(buffer, 'render_video.sh', 'text/x-shellscript') }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5144,
+        5160
+      ],
+      "id": "2fb2a6f1-a691-4ab5-9e6b-49cf2be31d88",
+      "name": "Build Render Script"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ $json.scriptPath }}",
+        "dataPropertyName": "script",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        5368,
+        5160
+      ],
+      "id": "7b02a220-e8ff-4268-8816-f0adf160e7f1",
+      "name": "Write Render Script"
+    },
+    {
+      "parameters": {
+        "command": "=bash \"{{ $json.scriptPath }}\""
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        5592,
+        5160
+      ],
+      "id": "2dfcb179-8966-4f09-88ba-275cd95e218a",
+      "name": "Execute Render Script (ffmpeg)"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "let raw = $json.output;\nif (typeof raw === 'string') {\n  raw = raw.trim();\n  const fenceMatch = raw.match(/^```(?:json)?\\s*([\\s\\S]*?)\\s*```$/i);\n  if (fenceMatch) raw = fenceMatch[1];\n}\n\nlet data;\ntry {\n  data = JSON.parse(raw);\n} catch (e) {\n  throw new Error(`Research Agent output khong phai JSON hop le: ${e.message}`);\n}\n\nconst gv = $('Generate Video ID').first().json;\nconst thumbnailPath = $('Init Paths').first().json.thumbnailPath;\nconst fallbackStock = gv.niche === 'tam_ly' ? 'calm lifestyle emotion background' : 'financial news thumbnail background';\n\nreturn {\n  json: {\n    videoId: gv.videoId,\n    niche: gv.niche,\n    title: data.title,\n    description: data.description,\n    tags: data.tags || [],\n    hashtags: data.hashtags || [],\n    thumbnailPath,\n    eventQuery: data.title,\n    stockQuery: fallbackStock\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2648,
+        5456
+      ],
+      "id": "2df276f6-95e2-46fa-84e2-c33ab580e4b2",
+      "name": "Build Thumbnail Image Query"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.tavily.com/search",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "tavilyApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: $('Build Thumbnail Image Query').first().json.eventQuery, search_depth: 'basic', include_images: true, include_image_descriptions: false, max_results: 3 }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2872,
+        5456
+      ],
+      "id": "42633bda-6518-4622-93f5-2df47947038b",
+      "name": "Tavily Image Search (Thumbnail)",
+      "credentials": {
+        "tavilyApi": {
+          "id": "FzCSQUCeWSUUEBab",
+          "name": "Tavily account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "let imageUrl = null;\n\nif (Array.isArray($json.results)) {\n  for (const result of $json.results) {\n    if (Array.isArray(result.images) && result.images.length > 0) {\n      imageUrl = result.images.find(url => !url.includes('instagram.com') && !url.includes('lookaside.instagram.com'));\n      if (!imageUrl) imageUrl = result.images[0];\n      if (imageUrl) break;\n    }\n  }\n}\n\nif (!imageUrl && Array.isArray($json.images) && $json.images.length > 0) {\n  imageUrl = $json.images.find(url => !url.includes('instagram.com') && !url.includes('lookaside.instagram.com')) || $json.images[0];\n}\n\nconst ctx = $('Build Thumbnail Image Query').first().json;\n\nreturn { json: { ...ctx, hasTavilyImage: !!imageUrl, tavilyImageUrl: imageUrl } };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3096,
+        5456
+      ],
+      "id": "7ce33edc-7111-4925-9280-d5aac49befb2",
+      "name": "Check Tavily Images (Thumbnail)"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "cond2",
+              "leftValue": "={{ $json.hasTavilyImage }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        3320,
+        5456
+      ],
+      "id": "1178be46-8a61-46aa-acc3-e2883e679f0e",
+      "name": "Has Tavily Image? (Thumbnail)"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.tavilyImageUrl }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "file"
+            }
+          },
+          "timeout": 12000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        3544,
+        5384
+      ],
+      "id": "95af0009-12a2-466c-a786-8688ba3274ce",
+      "name": "Download Thumbnail (Tavily)",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "function getImageDimensions(buf) {\n  if (buf.length > 4 && buf[0] === 0xFF && buf[1] === 0xD8) {\n    let offset = 2;\n    while (offset + 9 < buf.length) {\n      if (buf[offset] !== 0xFF) { offset++; continue; }\n      const marker = buf[offset + 1];\n      if (marker >= 0xC0 && marker <= 0xC3) {\n        return { width: buf.readUInt16BE(offset + 7), height: buf.readUInt16BE(offset + 5) };\n      }\n      const segLength = buf.readUInt16BE(offset + 2);\n      offset += 2 + segLength;\n    }\n    return null;\n  }\n  if (buf.length > 24 && buf[0] === 0x89 && buf[1] === 0x50) {\n    return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };\n  }\n  return null;\n}\n\nconst MIN_DIMENSION = 720;\n\n// Lay scene tu node 'Check Tavily Images (Thumbnail)' - xem giai thich trong\n// Validate Tavily Image (cung fix ECONNABORTED/timeout + onError o Download\n// Thumbnail (Tavily) ben tren).\nconst scene = $('Check Tavily Images (Thumbnail)').first().json;\nconst binary = $input.item.binary && $input.item.binary.data;\nlet isValid = false;\n\nif (binary) {\n  const buffer = await this.helpers.getBinaryDataBuffer(0, 'data');\n  const isJpeg = buffer.length > 4 && buffer[0] === 0xFF && buffer[1] === 0xD8;\n  const isPng = buffer.length > 8 && buffer[0] === 0x89 && buffer[1] === 0x50;\n  const isWebp = buffer.length > 12 && buffer.slice(8, 12).toString() === 'WEBP';\n  const dims = getImageDimensions(buffer);\n  const meetsResolution = isWebp ? true : (dims ? Math.min(dims.width, dims.height) >= MIN_DIMENSION : false);\n  isValid = buffer.length > 2000 && (isJpeg || isPng || isWebp) && meetsResolution;\n}\n\nreturn { json: { ...scene, tavilyImageValid: isValid }, binary: $input.item.binary };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3768,
+        5384
+      ],
+      "id": "0b63905a-9a0d-4e3a-ac38-a978ab05260b",
+      "name": "Validate Tavily Thumbnail"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "2cd49f0a-495f-4b38-b9fe-098b36e761da",
+              "leftValue": "={{ $json.tavilyImageValid }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        3992,
+        5384
+      ],
+      "id": "62f677f7-4319-48be-a74c-56688074c56a",
+      "name": "Is Tavily Thumbnail Valid?"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.pexels.com/v1/search?query={{ encodeURIComponent($json.stockQuery) }}&orientation=portrait&per_page=5&size=large",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        4216,
+        5456
+      ],
+      "id": "2433c1e6-a2a2-446d-a302-7a6541a9d182",
+      "name": "Pexels Image Search (Thumbnail)",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "MpKrAHcdRHV5PnRV",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const MIN_DIMENSION = 720;\nconst photos = $json.photos || [];\nconst hq = photos.find(p => Math.min(p.width || 0, p.height || 0) >= MIN_DIMENSION);\nconst photo = hq || photos[0];\nconst imageUrl = photo && photo.src && (photo.src.large2x || photo.src.large || photo.src.original);\n\nconst ctx = $('Check Tavily Images (Thumbnail)').first().json;\n\nif (!imageUrl) {\n  throw new Error('Pexels khong tra ve anh thumbnail phu hop cho query: ' + (ctx.stockQuery || ''));\n}\n\nreturn { json: { ...ctx, pexelsImageUrl: imageUrl } };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4440,
+        5456
+      ],
+      "id": "91476c31-6287-4ddf-b499-468f8a0fadd8",
+      "name": "Extract Pexels Image URL (Thumbnail)"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.pexelsImageUrl }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        4664,
+        5456
+      ],
+      "id": "f0a3e70f-6113-4504-b327-4ebf7edf1817",
+      "name": "Download Thumbnail (Pexels)"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ $('Check Tavily Images (Thumbnail)').first().json.thumbnailPath }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        4888,
+        5384
+      ],
+      "id": "e114b269-c2f3-4723-8848-e18808759e8e",
+      "name": "Write Thumbnail Background"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        5816,
+        5160
+      ],
+      "id": "2092e650-2dfd-47b0-8024-8d77663e2a4d",
+      "name": "Merge Video + Thumbnail"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst videoData = $('Build Render Script').first().json;\nconst thumbCtx = $('Build Thumbnail Image Query').first().json;\nconst thumbnailPath = $('Init Paths').first().json.thumbnailPath;\n\nconst hashtags = (thumbCtx.hashtags || []).map((h) => (h.startsWith('#') ? h : `#${h}`));\nconst description = [thumbCtx.description || '', hashtags.join(' ')].filter(Boolean).join('\\n\\n');\n\n// fileSize duoc tinh 1 lan o day (dung chung cho ca nhanh Facebook Reels va\n// TikTok ben duoi - ca hai deu can biet chinh xac so byte de upload).\nconst fileSize = fs.statSync(videoData.finalVideoPath).size;\n\nreturn [{\n  json: {\n    videoId: videoData.videoId,\n    niche: thumbCtx.niche,\n    finalVideoPath: videoData.finalVideoPath,\n    fileSize,\n    thumbnailPath,\n    title: thumbCtx.title,\n    description,\n    tags: thumbCtx.tags\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6040,
+        5160
+      ],
+      "id": "3d42daa2-b0b8-4d13-821c-7d5dde5880e5",
+      "name": "Prepare YouTube Metadata"
+    },
+    {
+      "parameters": {
+        "fileSelector": "={{ $json.finalVideoPath }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        6264,
+        5160
+      ],
+      "id": "c90eefcc-8b62-499d-a6d3-a249e8b223bc",
+      "name": "Read Final Video File"
+    },
+    {
+      "parameters": {
+        "resource": "video",
+        "operation": "upload",
+        "title": "={{ $('Prepare YouTube Metadata').first().json.title }}",
+        "regionCode": "VN",
+        "categoryId": "={{ $('Prepare YouTube Metadata').first().json.niche === 'tam_ly' ? '22' : '25' }}",
+        "options": {
+          "description": "={{ $('Prepare YouTube Metadata').first().json.description }}",
+          "privacyStatus": "private",
+          "tags": "={{ ($('Prepare YouTube Metadata').first().json.tags || []).join(',') }}"
+        }
+      },
+      "type": "n8n-nodes-base.youTube",
+      "typeVersion": 1,
+      "position": [
+        6488,
+        5160
+      ],
+      "id": "7a29f6f7-008e-44ef-abfd-f95b85801c53",
+      "name": "Upload Video To YouTube",
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "8H6dcwwlUwbkYxZ2",
+          "name": "YouTube account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fileSelector": "={{ $('Prepare YouTube Metadata').first().json.thumbnailPath }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        6712,
+        5160
+      ],
+      "id": "8c553c80-d044-4d7a-aebc-2d8637693687",
+      "name": "Read Thumbnail File"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://www.googleapis.com/upload/youtube/v3/thumbnails/set?videoId={{ $('Upload Video To YouTube').first().json.id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "youTubeOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "={{ $binary.data.mimeType }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        6936,
+        5160
+      ],
+      "id": "c3bd5a9d-13f1-42fe-8607-469950c375bd",
+      "name": "Set YouTube Thumbnail",
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "8H6dcwwlUwbkYxZ2",
+          "name": "YouTube account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## DANG THEM FACEBOOK REELS + TIKTOK (2026-07-27)\n\nCa 2 nhanh nay chay SONG SONG voi nhanh YouTube (deu bat dau tu 'Prepare\nYouTube Metadata'), va deu dung onError=continueRegularOutput tren MOI\nnode - neu Facebook hoac TikTok loi (token het han, rate limit, v.v.) thi\nCHI nhanh do bi anh huong, KHONG lam crash ca video/ca ngay chay.\n\nFACEBOOK: can Page Access Token (dan vao FB_ACCESS_TOKEN trong Load\nConfig) + FB_PAGE_ID (da dien san). Luu y: token nguoi dung dan vao chat\nTRUOC DAY DA BI LO - PHAI xoay vong (rotate) token moi truoc khi dung.\n\nTIKTOK: client_key/client_secret KHONG du de dang video - TikTok bat\nbuoc phai co access_token/refresh_token cua NGUOI DUNG THAT qua man hinh\ndong y OAuth. Chay 1 LAN DUY NHAT script `tiktok_oauth_setup.py` (xem\nhuong dan chi tiet trong file do, can 1 URL redirect https - vi du qua\nngrok) de tao ra tiktok_tokens.json. Workflow se tu dong REFRESH token\ntruoc moi lan dang (khong can lam lai buoc OAuth thu cong nay nua tru\nkhi refresh_token het han sau 365 ngay). App unaudited -> chi dang duoc\nSELF_ONLY (rieng tu) - doi TIKTOK_PRIVACY_LEVEL trong Load Config sau khi\nTikTok duyet app de dang cong khai.",
+        "height": 380,
+        "width": 560,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        6040,
+        4680
+      ],
+      "id": "31fd9a3b-6f55-4eb3-9e2e-eec831bb7c67",
+      "name": "Note 6f259dfc"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v21.0/{{ $('Load Config').first().json.FB_PAGE_ID }}/video_reels",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ upload_phase: 'start', access_token: $('Load Config').first().json.FB_ACCESS_TOKEN }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        6264,
+        5400
+      ],
+      "id": "f3c4ada3-20fa-4d7d-8704-f75b74540a68",
+      "name": "FB: Start Upload",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "fileSelector": "={{ $('Prepare YouTube Metadata').first().json.finalVideoPath }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        6488,
+        5400
+      ],
+      "id": "050dd80e-4978-402e-81df-00a545a3c631",
+      "name": "FB: Read Video File",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $('FB: Start Upload').first().json.upload_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=OAuth {{ $('Load Config').first().json.FB_ACCESS_TOKEN }}"
+            },
+            {
+              "name": "offset",
+              "value": "0"
+            },
+            {
+              "name": "file_size",
+              "value": "={{ $('Prepare YouTube Metadata').first().json.fileSize }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        6712,
+        5400
+      ],
+      "id": "e3aa8830-9a37-42db-b02d-ed37e46de451",
+      "name": "FB: Upload Video",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v21.0/{{ $('Load Config').first().json.FB_PAGE_ID }}/video_reels",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "access_token",
+              "value": "={{ $('Load Config').first().json.FB_ACCESS_TOKEN }}"
+            },
+            {
+              "name": "video_id",
+              "value": "={{ $('FB: Start Upload').first().json.video_id }}"
+            },
+            {
+              "name": "upload_phase",
+              "value": "finish"
+            },
+            {
+              "name": "video_state",
+              "value": "PUBLISHED"
+            },
+            {
+              "name": "description",
+              "value": "={{ $('Prepare YouTube Metadata').first().json.description }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        6936,
+        5400
+      ],
+      "id": "2d635655-4fe7-4493-aabf-43406e9439aa",
+      "name": "FB: Publish Reel",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst cfg = $('Load Config').first().json;\nif (!fs.existsSync(cfg.TIKTOK_TOKENS_FILE)) {\n  throw new Error('Chua co tiktok_tokens.json - chay 1 lan `python tiktok_oauth_setup.py` truoc (xem huong dan trong file do).');\n}\nconst tokens = JSON.parse(fs.readFileSync(cfg.TIKTOK_TOKENS_FILE, 'utf-8'));\nreturn [{ json: tokens }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6264,
+        5640
+      ],
+      "id": "9f14a3f6-53d2-4dce-a142-280d117861a3",
+      "name": "TikTok: Load Tokens",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://open.tiktokapis.com/v2/oauth/token/",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "client_key",
+              "value": "={{ $('Load Config').first().json.TIKTOK_CLIENT_KEY }}"
+            },
+            {
+              "name": "client_secret",
+              "value": "={{ $('Load Config').first().json.TIKTOK_CLIENT_SECRET }}"
+            },
+            {
+              "name": "grant_type",
+              "value": "refresh_token"
+            },
+            {
+              "name": "refresh_token",
+              "value": "={{ $('TikTok: Load Tokens').first().json.refresh_token }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        6488,
+        5640
+      ],
+      "id": "1a4287b0-cf09-4db9-bf12-078fb2b702a9",
+      "name": "TikTok: Refresh Token",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst cfg = $('Load Config').first().json;\nconst t = $json;\nif (!t.access_token) {\n  throw new Error('TikTok refresh token that bai: ' + JSON.stringify(t).slice(0, 300));\n}\nfs.writeFileSync(cfg.TIKTOK_TOKENS_FILE, JSON.stringify({\n  access_token: t.access_token,\n  refresh_token: t.refresh_token,\n  open_id: t.open_id,\n  obtained_at: new Date().toISOString()\n}, null, 2));\nreturn [{ json: t }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6712,
+        5640
+      ],
+      "id": "b9846999-297a-4ef6-b094-909e9a0167a4",
+      "name": "TikTok: Save New Tokens",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst finalVideoPath = $('Prepare YouTube Metadata').first().json.finalVideoPath;\nconst video_size = fs.statSync(finalVideoPath).size;\nreturn [{ json: { video_size } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6936,
+        5640
+      ],
+      "id": "0963a0a2-dcd1-4c5b-9860-604bca9f00d1",
+      "name": "TikTok: Prepare Upload Info",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://open.tiktokapis.com/v2/post/publish/video/init/",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('TikTok: Save New Tokens').first().json.access_token }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json; charset=UTF-8"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ post_info: { title: $('Prepare YouTube Metadata').first().json.title, privacy_level: $('Load Config').first().json.TIKTOK_PRIVACY_LEVEL, disable_duet: false, disable_comment: false, disable_stitch: false }, source_info: { source: 'FILE_UPLOAD', video_size: $('TikTok: Prepare Upload Info').first().json.video_size, chunk_size: $('TikTok: Prepare Upload Info').first().json.video_size, total_chunk_count: 1 } }) }}",
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        7160,
+        5640
+      ],
+      "id": "49cf2b31-c3cf-4371-b707-3ea826d6f533",
+      "name": "TikTok: Init Upload",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "fileSelector": "={{ $('Prepare YouTube Metadata').first().json.finalVideoPath }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        7384,
+        5640
+      ],
+      "id": "2c107cab-3db6-4de5-9964-5efcd713038d",
+      "name": "TikTok: Read Video File",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $('TikTok: Init Upload').first().json.data.upload_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "video/mp4"
+            },
+            {
+              "name": "Content-Range",
+              "value": "=bytes 0-{{ $('TikTok: Prepare Upload Info').first().json.video_size - 1 }}/{{ $('TikTok: Prepare Upload Info').first().json.video_size }}"
+            },
+            {
+              "name": "Content-Length",
+              "value": "={{ $('TikTok: Prepare Upload Info').first().json.video_size }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        7608,
+        5640
+      ],
+      "id": "ab24e958-2879-4d98-8221-2ce7751d9746",
+      "name": "TikTok: Upload Video",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://open.tiktokapis.com/v2/post/publish/status/fetch/",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('TikTok: Save New Tokens').first().json.access_token }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json; charset=UTF-8"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ publish_id: $('TikTok: Init Upload').first().json.data.publish_id }) }}",
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        7832,
+        5640
+      ],
+      "id": "756e370e-73be-4b1a-8ce8-4d721bbe7a72",
+      "name": "TikTok: Check Status",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "numberInputs": 3,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        8056,
+        5160
+      ],
+      "id": "d780b807-d716-4a62-aa55-6d305e0cc2cb",
+      "name": "Merge Social Uploads"
+    }
+  ],
+  "connections": {
+    "Ollama Chat Model (Topics)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Pick Daily Topics Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Load Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Config": {
+      "main": [
+        [
+          {
+            "node": "Build Topics Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Topics Query": {
+      "main": [
+        [
+          {
+            "node": "Tavily Search (Topics)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tavily Search (Topics)": {
+      "main": [
+        [
+          {
+            "node": "Parse Topics Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Topics Results": {
+      "main": [
+        [
+          {
+            "node": "Pick Daily Topics Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pick Daily Topics Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse & Split Topics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse & Split Topics": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Headlines",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Research Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model (Research)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Research Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search in Tavily": {
+      "ai_tool": [
+        [
+          {
+            "node": "Research Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model (Planner)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Screen Planner",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Headlines": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Generate Video ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Video ID": {
+      "main": [
+        [
+          {
+            "node": "Init Paths",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Init Paths": {
+      "main": [
+        [
+          {
+            "node": "Reset Scene Store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reset Scene Store": {
+      "main": [
+        [
+          {
+            "node": "Research Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Research Agent": {
+      "main": [
+        [
+          {
+            "node": "Screen Planner",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Build Thumbnail Image Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Screen Planner": {
+      "main": [
+        [
+          {
+            "node": "normalize scene data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "normalize scene data": {
+      "main": [
+        [
+          {
+            "node": "Generate audio (vietTTS)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate audio (vietTTS)": {
+      "main": [
+        [
+          {
+            "node": "attach audio to scene",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "attach audio to scene": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Scenes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Scenes": {
+      "main": [
+        [
+          {
+            "node": "prepare storyboard.json",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Image Queries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Image Queries": {
+      "main": [
+        [
+          {
+            "node": "Write audio file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write audio file": {
+      "main": [
+        [
+          {
+            "node": "Tavily Image Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tavily Image Search": {
+      "main": [
+        [
+          {
+            "node": "Check Tavily Images",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Tavily Images": {
+      "main": [
+        [
+          {
+            "node": "Has Tavily Image?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Tavily Image?": {
+      "main": [
+        [
+          {
+            "node": "Download Image (Tavily)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Pexels Image Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Image (Tavily)": {
+      "main": [
+        [
+          {
+            "node": "Validate Tavily Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Tavily Image": {
+      "main": [
+        [
+          {
+            "node": "Is Tavily Image Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Tavily Image Valid?": {
+      "main": [
+        [
+          {
+            "node": "Finalize Scene Image",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Pexels Image Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pexels Image Search": {
+      "main": [
+        [
+          {
+            "node": "Extract Pexels Image URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Pexels Image URL": {
+      "main": [
+        [
+          {
+            "node": "Download Image (Pexels)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Image (Pexels)": {
+      "main": [
+        [
+          {
+            "node": "Finalize Scene Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finalize Scene Image": {
+      "main": [
+        [
+          {
+            "node": "Write image file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write image file": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Scenes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "prepare storyboard.json": {
+      "main": [
+        [
+          {
+            "node": "Write storyboard.json",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write storyboard.json": {
+      "main": [
+        [
+          {
+            "node": "Build Render Script",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Render Script": {
+      "main": [
+        [
+          {
+            "node": "Write Render Script",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Render Script": {
+      "main": [
+        [
+          {
+            "node": "Execute Render Script (ffmpeg)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Thumbnail Image Query": {
+      "main": [
+        [
+          {
+            "node": "Tavily Image Search (Thumbnail)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tavily Image Search (Thumbnail)": {
+      "main": [
+        [
+          {
+            "node": "Check Tavily Images (Thumbnail)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Tavily Images (Thumbnail)": {
+      "main": [
+        [
+          {
+            "node": "Has Tavily Image? (Thumbnail)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Tavily Image? (Thumbnail)": {
+      "main": [
+        [
+          {
+            "node": "Download Thumbnail (Tavily)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Pexels Image Search (Thumbnail)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Thumbnail (Tavily)": {
+      "main": [
+        [
+          {
+            "node": "Validate Tavily Thumbnail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Tavily Thumbnail": {
+      "main": [
+        [
+          {
+            "node": "Is Tavily Thumbnail Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Tavily Thumbnail Valid?": {
+      "main": [
+        [
+          {
+            "node": "Write Thumbnail Background",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Pexels Image Search (Thumbnail)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pexels Image Search (Thumbnail)": {
+      "main": [
+        [
+          {
+            "node": "Extract Pexels Image URL (Thumbnail)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Pexels Image URL (Thumbnail)": {
+      "main": [
+        [
+          {
+            "node": "Download Thumbnail (Pexels)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Thumbnail (Pexels)": {
+      "main": [
+        [
+          {
+            "node": "Write Thumbnail Background",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Thumbnail Background": {
+      "main": [
+        [
+          {
+            "node": "Merge Video + Thumbnail",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Execute Render Script (ffmpeg)": {
+      "main": [
+        [
+          {
+            "node": "Merge Video + Thumbnail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Video + Thumbnail": {
+      "main": [
+        [
+          {
+            "node": "Prepare YouTube Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare YouTube Metadata": {
+      "main": [
+        [
+          {
+            "node": "Read Final Video File",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "FB: Start Upload",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "TikTok: Load Tokens",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Final Video File": {
+      "main": [
+        [
+          {
+            "node": "Upload Video To YouTube",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Video To YouTube": {
+      "main": [
+        [
+          {
+            "node": "Read Thumbnail File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Thumbnail File": {
+      "main": [
+        [
+          {
+            "node": "Set YouTube Thumbnail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FB: Start Upload": {
+      "main": [
+        [
+          {
+            "node": "FB: Read Video File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FB: Read Video File": {
+      "main": [
+        [
+          {
+            "node": "FB: Upload Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FB: Upload Video": {
+      "main": [
+        [
+          {
+            "node": "FB: Publish Reel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TikTok: Load Tokens": {
+      "main": [
+        [
+          {
+            "node": "TikTok: Refresh Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TikTok: Refresh Token": {
+      "main": [
+        [
+          {
+            "node": "TikTok: Save New Tokens",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TikTok: Save New Tokens": {
+      "main": [
+        [
+          {
+            "node": "TikTok: Prepare Upload Info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TikTok: Prepare Upload Info": {
+      "main": [
+        [
+          {
+            "node": "TikTok: Init Upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TikTok: Init Upload": {
+      "main": [
+        [
+          {
+            "node": "TikTok: Read Video File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TikTok: Read Video File": {
+      "main": [
+        [
+          {
+            "node": "TikTok: Upload Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TikTok: Upload Video": {
+      "main": [
+        [
+          {
+            "node": "TikTok: Check Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set YouTube Thumbnail": {
+      "main": [
+        [
+          {
+            "node": "Merge Social Uploads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FB: Publish Reel": {
+      "main": [
+        [
+          {
+            "node": "Merge Social Uploads",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "TikTok: Check Status": {
+      "main": [
+        [
+          {
+            "node": "Merge Social Uploads",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Merge Social Uploads": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Headlines",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f820868f59015112916cb180789f95ffb136cb3e701323e49dc86220f1b1040d"
+  }
+}

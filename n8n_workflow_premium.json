@@ -1,0 +1,1694 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## MODULE 1 - TREND RESEARCH\n\nSources: Google Trends, Google News, YouTube, Reddit, GitHub Trending,\nProduct Hunt, OpenAI blog, Anthropic blog, Google AI blog (all via Tavily).\n\nRanks candidates by Virality / Search Interest / Novelty / Educational\nValue / Long-term Search Potential. Selects exactly ONE topic.",
+        "height": 280,
+        "width": 520,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -6200,
+        760
+      ],
+      "id": "b2bf166f-a8f6-4a47-a094-8cc1383ffce0",
+      "name": "Note 28b55f89"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 6
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        -6200,
+        1000
+      ],
+      "id": "aedb816d-448a-4dcd-8f7b-db4f266cd288",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst path = require('path');\n\n// ==== EDIT THESE FOR YOUR MACHINE ====\nconst BASE_DIR = process.env.AI_SHORTS_BASE_DIR || '/Users/tuht1/ai-shorts-videos';\nconst VIETTTS_URL = process.env.VIETTTS_URL || 'http://127.0.0.1:8002/tts';\nconst NICHE = ['Artificial Intelligence','Automation','Software','Programming',\n  'AI Tools','Productivity','Tech News','LLMs','Open Source AI'];\nconst PLATFORMS = ['tiktok','youtube_shorts','facebook_reels'];\n// =======================================\n\nfs.mkdirSync(BASE_DIR, { recursive: true });\nfs.mkdirSync(path.join(BASE_DIR, 'assets', 'bgm'), { recursive: true });\nfs.mkdirSync(path.join(BASE_DIR, 'assets', 'sfx'), { recursive: true });\nfs.mkdirSync(path.join(BASE_DIR, 'analytics'), { recursive: true });\n\n// Module 11 (Analytics) writes this file; Module 1 reads it so today's\n// research is informed by what actually performed well recently.\nconst learningsPath = path.join(BASE_DIR, 'analytics', 'learnings.json');\nlet learnings = { topPerformingTopics: [], topPerformingHooks: [], avoid: [] };\ntry {\n  if (fs.existsSync(learningsPath)) learnings = JSON.parse(fs.readFileSync(learningsPath, 'utf8'));\n} catch (e) { /* first run, no learnings yet */ }\n\nconst now = new Date();\nreturn [{\n  json: {\n    BASE_DIR, VIETTTS_URL, NICHE, PLATFORMS, learnings,\n    today: now.toISOString().slice(0, 10)\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -5950,
+        1000
+      ],
+      "id": "a1d6be85-c8b5-4688-8468-6512a3439e10",
+      "name": "Load Config & Learnings"
+    },
+    {
+      "parameters": {
+        "content": "## RELIABILITY NOTE\n\nModules 1-2 used to run Tavily as an AI-tool inside an autonomous agent\n(ReAct loop). With small local Ollama models that loop was unreliable -\nit repeatedly hit 'Max iterations reached' instead of answering, even\nafter raising maxIterations and tuning the prompt. Redesigned to be\nDETERMINISTIC instead: a Code node builds the query, a plain HTTP Request\nnode calls the Tavily REST API directly (no agent, no tool, no loop),\nthen a tool-free LLM call (same pattern already proven reliable for the\nScript/Storyboard/Visual Director/SEO steps) synthesizes the JSON.",
+        "height": 300,
+        "width": 520,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -5750,
+        700
+      ],
+      "id": "c838d5b2-2d03-45cf-a694-a992e5ee1a81",
+      "name": "Note eb596267"
+    },
+    {
+      "parameters": {
+        "jsCode": "// One well-scoped Tavily query covering every requested source, rather than\n// letting an agent decide (unreliable with small local models - see sticky note).\nconst niche = ($json.NICHE || []).join(', ');\nconst query = 'Trending in the last 3 days about ' + niche + ': '\n  + 'Google Trends breakout topics, Google News headlines, popular YouTube videos, '\n  + 'top Reddit discussions, GitHub Trending repositories, Product Hunt launches, '\n  + 'and official OpenAI, Anthropic, Google AI blog announcements.';\nreturn [{ json: { ...$json, trendQuery: query } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -5700,
+        1000
+      ],
+      "id": "c4bedf2f-aa13-46aa-b6a2-64e76785c790",
+      "name": "Build Trend Search Query"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.tavily.com/search",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: $json.trendQuery, topic: 'news', search_depth: 'advanced', days: 3, max_results: 10, include_answer: false }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -5500,
+        1000
+      ],
+      "id": "91564c16-173e-4496-b99c-aee38c7388d9",
+      "name": "Tavily Search (Trend)",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_ME",
+          "name": "Tavily API Key (Bearer)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const prev = $('Build Trend Search Query').first().json;\nconst results = $json.results || [];\nconst digest = results.slice(0, 10).map((r, i) =>\n  (i + 1) + '. ' + r.title + '\\n   URL: ' + r.url + '\\n   ' + (r.content || '').slice(0, 300)\n).join('\\n\\n');\n\nreturn [{ json: { ...prev, trendSearchDigest: digest || 'Khong co ket qua tim kiem.' } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -5300,
+        1000
+      ],
+      "id": "87cd9c81-14a5-4941-aa4b-3a24ca586976",
+      "name": "Parse Trend Search Results"
+    },
+    {
+      "parameters": {
+        "model": "qwen2.5:14b",
+        "options": {
+          "format": "json"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        -5100,
+        1260
+      ],
+      "id": "81184ae0-9458-4de2-869c-c3883734e44b",
+      "name": "Ollama Chat Model (Trend Synthesis)",
+      "credentials": {
+        "ollamaApi": {
+          "id": "REPLACE_ME",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Bạn là Trend Researcher cho kênh Shorts công nghệ (AI, Automation, Software, Programming, AI Tools, Productivity, Tech News, LLMs, Open Source AI), đăng trên TikTok / YouTube Shorts / Facebook Reels.\n\nNgày hôm nay: {{ $json.today }}\nChủ đề đã dùng gần đây (TRÁNH lặp lại): {{ JSON.stringify($json.learnings.avoid) }}\nChủ đề/hook từng hiệu quả tốt (tham khảo phong cách, KHÔNG copy nguyên): {{ JSON.stringify($json.learnings.topPerformingTopics) }}\n\nKết quả tìm kiếm Tavily (Google Trends/News/YouTube/Reddit/GitHub Trending/Product Hunt/OpenAI/Anthropic/Google AI blogs) trong 72 giờ qua:\n{{ $json.trendSearchDigest }}\n\nDựa CHỈ vào kết quả tìm kiếm trên (không bịa thêm), chọn ra ĐÚNG 5 chủ đề tiềm năng nhất, mỗi chủ đề chấm điểm 1-10 trên 5 tiêu chí: virality, search_interest, novelty, educational_value, long_term_search_potential. Tính tổng điểm và SẮP XẾP giảm dần. Chọn ứng viên có tổng điểm cao nhất làm selected_topic. source_urls PHẢI là URL thật lấy từ kết quả tìm kiếm ở trên.\n\nOutput CHỈ JSON, không markdown, không giải thích, đúng schema:\n{\n  \"candidates\": [\n    {\n      \"topic\": \"\",\n      \"why_now\": \"\",\n      \"source_urls\": [\"\"],\n      \"scores\": {\"virality\":0,\"search_interest\":0,\"novelty\":0,\"educational_value\":0,\"long_term_search_potential\":0},\n      \"total_score\": 0\n    }\n  ],\n  \"selected_topic\": {\n    \"topic\": \"\",\n    \"why_now\": \"\",\n    \"source_urls\": [\"\"]\n  }\n}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -4900,
+        1000
+      ],
+      "id": "97ce7a8d-e580-4637-b6f8-3f355b22a4d6",
+      "name": "Trend Synthesis Agent"
+    },
+    {
+      "parameters": {
+        "jsCode": "function parseAgentJson(raw) {\n  if (typeof raw !== 'string') return raw;\n  let t = raw.trim();\n  const fence = t.match(/^```(?:json)?\\s*([\\s\\S]*?)\\s*```$/i);\n  if (fence) t = fence[1];\n  if (!/^[\\{\\[]/.test(t.trim())) {\n    const m = t.match(/\\{[\\s\\S]*\\}/);\n    if (m) t = m[0];\n  }\n  return JSON.parse(t);\n}\n\nlet data;\ntry {\n  data = parseAgentJson($json.output);\n} catch (e) {\n  throw new Error('Trend Synthesis Agent khong tra ve JSON hop le: ' + String($json.output).slice(0, 300));\n}\n\nif (!data.candidates || !Array.isArray(data.candidates) || data.candidates.length === 0) {\n  throw new Error('Trend Synthesis Agent thieu field candidates[]');\n}\nif (data.candidates.length > 5) data.candidates = data.candidates.slice(0, 5);\n\nconst ranked = data.candidates.slice().sort((a, b) => (b.total_score || 0) - (a.total_score || 0));\nconst top = data.selected_topic && data.selected_topic.topic ? data.selected_topic : ranked[0];\n\nconst cfg = $('Load Config & Learnings').first().json;\nreturn [{\n  json: {\n    ...cfg,\n    candidates: ranked,\n    topic: top.topic,\n    whyNow: top.why_now,\n    topicSourceUrls: top.source_urls || []\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4700,
+        1000
+      ],
+      "id": "00d7bd4e-da80-445d-8946-0e94d4bbbdc6",
+      "name": "Select Top Topic"
+    },
+    {
+      "parameters": {
+        "content": "## MODULE 2 - DEEP RESEARCH\n\nCollects facts, stats, official docs and real announcements for the\nselected topic. Every fact must carry a source URL. No invented info.\nFails the run if fewer than 3 sourced facts are found. Same deterministic\nsearch-then-synthesize pattern as Module 1 (no agent/tool loop).",
+        "height": 280,
+        "width": 480,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -4500,
+        760
+      ],
+      "id": "ac79112d-5180-48be-acdf-fc862d8ba92a",
+      "name": "Note 4721a1fb"
+    },
+    {
+      "parameters": {
+        "jsCode": "const query = 'Facts, statistics, official announcements, documentation and best practices about: ' + $json.topic + '. Context: ' + $json.whyNow;\nreturn [{ json: { ...$json, deepQuery: query } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4450,
+        1000
+      ],
+      "id": "81ab07f7-a2e5-402d-866c-b0a08d94c3d6",
+      "name": "Build Deep Research Query"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.tavily.com/search",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: $json.deepQuery, search_depth: 'advanced', max_results: 10, include_answer: false }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -4250,
+        1000
+      ],
+      "id": "ff7c9a16-ecbc-4c90-af93-6c780eb81a0f",
+      "name": "Tavily Search (Deep Research)",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_ME",
+          "name": "Tavily API Key (Bearer)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const prev = $('Build Deep Research Query').first().json;\nconst results = $json.results || [];\nconst digest = results.slice(0, 10).map((r, i) =>\n  (i + 1) + '. ' + r.title + '\\n   URL: ' + r.url + '\\n   ' + (r.content || '').slice(0, 400)\n).join('\\n\\n');\n\nreturn [{ json: { ...prev, deepSearchDigest: digest || 'Khong co ket qua tim kiem.' } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4050,
+        1000
+      ],
+      "id": "4d9f1b81-8571-4d72-a1c3-c8dbbb2a963a",
+      "name": "Parse Deep Research Results"
+    },
+    {
+      "parameters": {
+        "model": "qwen2.5:14b",
+        "options": {
+          "format": "json"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        -3850,
+        1260
+      ],
+      "id": "7e93408a-1080-41a1-b4d0-d87bc52c6b20",
+      "name": "Ollama Chat Model (Deep Synthesis)",
+      "credentials": {
+        "ollamaApi": {
+          "id": "REPLACE_ME",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Bạn là Fact Researcher nghiêm ngặt. Chủ đề: {{ $json.topic }}\nBối cảnh: {{ $json.whyNow }}\n\nKết quả tìm kiếm Tavily (số liệu, ví dụ, thông báo, tài liệu chính thức):\n{{ $json.deepSearchDigest }}\n\nDựa CHỈ vào kết quả tìm kiếm ở trên để trích xuất: số liệu thật, ví dụ thật, phát biểu/thông báo chính thức, tài liệu kỹ thuật chính thức, best practice được công nhận. TUYỆT ĐỐI không suy diễn, không bịa số liệu, không dùng tin giật gân/chưa xác thực. Mỗi fact PHẢI có source_url thật lấy từ kết quả tìm kiếm ở trên (không bịa URL).\n\nOutput CHỈ JSON, đúng schema:\n{\n  \"facts\": [ {\"fact\": \"\", \"source_url\": \"\", \"source_name\": \"\"} ],\n  \"official_docs\": [ {\"title\": \"\", \"url\": \"\"} ],\n  \"real_example\": {\"description\": \"\", \"source_url\": \"\"},\n  \"best_practices\": [\"\"],\n  \"key_takeaway\": \"\"\n}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -3650,
+        1000
+      ],
+      "id": "54e3ed7a-0a50-48f1-95b5-38a68daf0d58",
+      "name": "Deep Research Synthesis Agent"
+    },
+    {
+      "parameters": {
+        "jsCode": "function parseAgentJson(raw) {\n  if (typeof raw !== 'string') return raw;\n  let t = raw.trim();\n  const fence = t.match(/^```(?:json)?\\s*([\\s\\S]*?)\\s*```$/i);\n  if (fence) t = fence[1];\n  if (!/^[\\{\\[]/.test(t.trim())) {\n    const m = t.match(/\\{[\\s\\S]*\\}/);\n    if (m) t = m[0];\n  }\n  return JSON.parse(t);\n}\n\nlet data;\ntry {\n  data = parseAgentJson($json.output);\n} catch (e) {\n  throw new Error('Deep Research Agent khong tra ve JSON hop le.');\n}\n\nconst facts = (data.facts || []).filter(f => f.fact && f.source_url);\nif (facts.length < 3) {\n  throw new Error('Deep Research: chi tim duoc ' + facts.length + ' fact co nguon (can >= 3). Dung, khong bia so lieu.');\n}\n\nconst prev = $('Select Top Topic').first().json;\nreturn [{\n  json: {\n    ...prev,\n    facts,\n    officialDocs: data.official_docs || [],\n    realExample: data.real_example || {},\n    bestPractices: data.best_practices || [],\n    keyTakeaway: data.key_takeaway || ''\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4450,
+        1000
+      ],
+      "id": "8ec3f114-7e3a-4a06-8ebf-2681106b144e",
+      "name": "Validate Facts"
+    },
+    {
+      "parameters": {
+        "content": "## MODULE 3 - SCRIPT WRITER\n\nHook / Problem / Explanation / Real Example / Key Takeaway / CTA.\nMax 170 words. Conversational Vietnamese. No repeated ideas.\nValidated for word count + required structure before continuing.",
+        "height": 260,
+        "width": 480,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -4250,
+        760
+      ],
+      "id": "058fa585-188e-4609-badc-6dd3f64bc747",
+      "name": "Note b4fafc51"
+    },
+    {
+      "parameters": {
+        "model": "qwen2.5:14b",
+        "options": {
+          "format": "json"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        -4200,
+        1260
+      ],
+      "id": "89259946-4eb8-4530-99ad-76d61d701dc0",
+      "name": "Ollama Chat Model (Script)",
+      "credentials": {
+        "ollamaApi": {
+          "id": "REPLACE_ME",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Bạn là Senior Scriptwriter cho kênh Shorts công nghệ premium (không mass-produced). Văn phong tự nhiên, đời thường, tiếng Việt hội thoại - như một creator am hiểu đang nói chuyện với bạn, KHÔNG phải giọng đọc báo cáo hay AI máy móc.\n\nChủ đề: {{ $json.topic }}\nFacts (PHẢI dùng, không bịa thêm): {{ JSON.stringify($json.facts) }}\nVí dụ thật: {{ JSON.stringify($json.realExample) }}\nBest practices: {{ JSON.stringify($json.bestPractices) }}\nKey takeaway gợi ý: {{ $json.keyTakeaway }}\n\nViết script theo ĐÚNG cấu trúc 6 phần, liền mạch, không lặp ý:\n1. Hook (3 giây đầu - phải tạo tò mò NGAY LẬP TỨC, có thể là câu hỏi gây sốc, số liệu bất ngờ, hoặc mâu thuẫn nhận thức)\n2. Problem (vấn đề khán giả đang gặp liên quan đến chủ đề)\n3. Explanation (giải thích ngắn gọn, dễ hiểu)\n4. Real Example (dẫn ví dụ/case thật từ facts đã research)\n5. Key Takeaway (bài học/insight đúc kết)\n6. CTA (kêu gọi hành động tự nhiên: theo dõi/thử/bình luận - không sáo rỗng)\n\nRÀNG BUỘC BẮT BUỘC: toàn bộ full_script tối đa 170 từ. Mỗi câu phải có giá trị, không câu nào thừa hay lặp ý câu khác.\n\nOutput CHỈ JSON, đúng schema:\n{\n  \"hook\": \"\", \"problem\": \"\", \"explanation\": \"\", \"real_example\": \"\",\n  \"key_takeaway\": \"\", \"cta\": \"\",\n  \"full_script\": \"\",\n  \"word_count\": 0\n}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -3950,
+        1000
+      ],
+      "id": "956d980b-011c-4938-864c-294c48b79e56",
+      "name": "Script Writer Agent"
+    },
+    {
+      "parameters": {
+        "jsCode": "function parseAgentJson(raw) {\n  if (typeof raw !== 'string') return raw;\n  let t = raw.trim();\n  const fence = t.match(/^```(?:json)?\\s*([\\s\\S]*?)\\s*```$/i);\n  if (fence) t = fence[1];\n  if (!/^[\\{\\[]/.test(t.trim())) {\n    const m = t.match(/\\{[\\s\\S]*\\}/);\n    if (m) t = m[0];\n  }\n  return JSON.parse(t);\n}\n\nlet data;\ntry {\n  data = parseAgentJson($json.output);\n} catch (e) {\n  throw new Error('Script Writer Agent khong tra ve JSON hop le.');\n}\n\nconst required = ['hook','problem','explanation','real_example','key_takeaway','cta','full_script'];\nfor (const k of required) {\n  if (!data[k] || !String(data[k]).trim()) throw new Error('Script thieu phan: ' + k);\n}\n\nconst words = String(data.full_script).trim().split(/\\s+/).filter(Boolean);\nif (words.length > 170) {\n  throw new Error('Script vuot qua 170 tu (dang co ' + words.length + ' tu). Yeu cau Script Writer Agent rut gon.');\n}\n\nconst prev = $('Validate Facts').first().json;\nreturn [{\n  json: {\n    ...prev,\n    script: { ...data, word_count: words.length }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3700,
+        1000
+      ],
+      "id": "710f6ff2-2320-4da7-a219-7eb4d4028599",
+      "name": "Validate Script"
+    },
+    {
+      "parameters": {
+        "content": "## MODULE 4 - STORYBOARD\n\nSplits the script into 5-8 dynamic scenes (45-70s total). Each scene:\nduration, narration, subtitle, visual_description, camera_motion,\ntransition, emotion, text_overlay, animation_suggestion.",
+        "height": 260,
+        "width": 480,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -3500,
+        760
+      ],
+      "id": "468af08d-c900-4b70-a57b-e108c2f35a04",
+      "name": "Note d170a5be"
+    },
+    {
+      "parameters": {
+        "model": "qwen2.5:14b",
+        "options": {
+          "format": "json"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        -3450,
+        1260
+      ],
+      "id": "49cbb643-96e3-4792-a0cd-051945062dff",
+      "name": "Ollama Chat Model (Storyboard)",
+      "credentials": {
+        "ollamaApi": {
+          "id": "REPLACE_ME",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Bạn là Senior Storyboard Director cho video dọc 9:16, 1080x1920, dài 45-70 giây, đăng TikTok / YouTube Shorts / Facebook Reels. Nhịp độ phải NĂNG ĐỘNG nhưng KHÔNG hỗn loạn.\n\nFull script: {{ $json.script.full_script }}\nHook: {{ $json.script.hook }}\nCTA: {{ $json.script.cta }}\n\nChia thành 5-8 scene. TỔNG duration các scene phải nằm trong khoảng 45-70 giây. Scene 1 PHẢI chứa hook và xuất hiện trong 3 giây đầu.\n\nVới MỖI scene, cung cấp đủ các field sau:\n- duration (giây, số thực)\n- narration (câu thoại đúng phần này của script, tiếng Việt)\n- subtitle (bản rút gọn dễ đọc của narration, dùng để hiển thị phụ đề - ngắn hơn narration)\n- visual_description (mô tả cảnh sẽ thấy, tiếng Anh, súc tích)\n- camera_motion (một trong: slow-zoom, push-in, pull-out, pan-left, pan-right, parallax, static, handheld-drift)\n- transition (transition dẫn ĐẾN scene tiếp theo: cut, whip-pan, zoom-blur, glitch, match-cut, fade)\n- emotion (cảm xúc chủ đạo của scene: curiosity, tension, excitement, relief, awe, humor)\n- text_overlay (từ khóa ngắn hiển thị nổi bật trên màn hình, có thể rỗng nếu không cần)\n- animation_suggestion (cách chữ/overlay xuất hiện: pop-in, slide-up, typewriter, bounce, fade)\n\nOutput CHỈ JSON, đúng schema:\n{\n  \"scenes\": [\n    {\n      \"duration\": 8, \"narration\": \"\", \"subtitle\": \"\", \"visual_description\": \"\",\n      \"camera_motion\": \"\", \"transition\": \"\", \"emotion\": \"\", \"text_overlay\": \"\",\n      \"animation_suggestion\": \"\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -3200,
+        1000
+      ],
+      "id": "b11d7c0e-0a85-4e1c-839a-1ac49cdda169",
+      "name": "Storyboard Agent"
+    },
+    {
+      "parameters": {
+        "jsCode": "function parseAgentJson(raw) {\n  if (typeof raw !== 'string') return raw;\n  let t = raw.trim();\n  const fence = t.match(/^```(?:json)?\\s*([\\s\\S]*?)\\s*```$/i);\n  if (fence) t = fence[1];\n  if (!/^[\\{\\[]/.test(t.trim())) {\n    const m = t.match(/\\{[\\s\\S]*\\}/);\n    if (m) t = m[0];\n  }\n  return JSON.parse(t);\n}\n\nlet data;\ntry {\n  data = parseAgentJson($json.output);\n} catch (e) {\n  throw new Error('Storyboard Agent khong tra ve JSON hop le.');\n}\n\nif (!data.scenes || !Array.isArray(data.scenes) || data.scenes.length === 0) {\n  throw new Error('Storyboard thieu scenes[]');\n}\n\nconst total = data.scenes.reduce((s, sc) => s + (Number(sc.duration) || 0), 0);\nif (total < 45 || total > 70) {\n  throw new Error('Tong duration scenes = ' + total.toFixed(1) + 's, phai nam trong 45-70s. Yeu cau Storyboard Agent dieu chinh.');\n}\n\nconst prev = $('Validate Script').first().json;\nconst scenes = data.scenes.map((sc, i) => ({ sceneId: i + 1, ...sc }));\nreturn scenes.map(sc => ({ json: { ...prev, totalDuration: total, scene: sc } }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2950,
+        1000
+      ],
+      "id": "6e0f694b-fb6b-4007-a4b1-2854ef1a78db",
+      "name": "Normalize Storyboard"
+    },
+    {
+      "parameters": {
+        "content": "## MODULE 5 - VISUAL DIRECTION (most important)\n\nRuns once per scene (after Normalize Storyboard splits into items).\nNo Sora / AI video generation - this is a REAL PHOTO slideshow format.\nProduces two search queries per scene: event_query (specific real-world\nphoto of the actual event/company/person, for Tavily image search) and\nstock_query (generic English description, Pexels fallback).",
+        "height": 280,
+        "width": 520,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -2750,
+        760
+      ],
+      "id": "a6a831a5-2014-40f5-b531-f94538ed9972",
+      "name": "Note 026d919a"
+    },
+    {
+      "parameters": {
+        "model": "qwen2.5:14b",
+        "options": {
+          "format": "json"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        -2700,
+        1260
+      ],
+      "id": "95473393-9083-4007-805c-8db3a32d1e6f",
+      "name": "Ollama Chat Model (Visual Director)",
+      "credentials": {
+        "ollamaApi": {
+          "id": "REPLACE_ME",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Bạn là Visual Director cho video dạng SLIDESHOW ẢNH THẬT (không dùng AI tạo video, không Sora) - mỗi scene là MỘT ảnh thật với hiệu ứng zoom nhẹ (Ken Burns).\n\nScene #{{ $json.scene.sceneId }} / duration {{ $json.scene.duration }}s\nNarration: {{ $json.scene.narration }}\nSubtitle: {{ $json.scene.subtitle }}\nVisual description gốc: {{ $json.scene.visual_description }}\n\nNhiệm vụ: tạo 2 câu truy vấn tìm ảnh cho scene này:\n1. event_query: từ khóa tìm ẢNH THẬT gắn với sự kiện/công ty/sản phẩm/nhân vật cụ thể được nhắc trong narration (dùng tên riêng, tiếng Việt hoặc tiếng Anh tùy ngữ cảnh). Nếu scene nói về một công ty/sản phẩm/người cụ thể, PHẢI nêu rõ tên trong query này. Dùng cho Tavily image search.\n2. stock_query: mô tả tiếng Anh chung chung kiểu ảnh stock chuyên nghiệp (ví dụ: 'modern data center server room', 'developer coding on laptop close up') để làm phương án dự phòng trên Pexels khi không tìm được ảnh sự kiện cụ thể.\n\nOutput CHỈ JSON, đúng schema:\n{\n  \"event_query\": \"\",\n  \"stock_query\": \"\"\n}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -2450,
+        1000
+      ],
+      "id": "f57ce8a4-4c1a-4fa6-9092-3beacae3eaac",
+      "name": "Visual Director Agent"
+    },
+    {
+      "parameters": {
+        "jsCode": "function parseAgentJson(raw) {\n  if (typeof raw !== 'string') return raw;\n  let t = raw.trim();\n  const fence = t.match(/^```(?:json)?\\s*([\\s\\S]*?)\\s*```$/i);\n  if (fence) t = fence[1];\n  if (!/^[\\{\\[]/.test(t.trim())) {\n    const m = t.match(/\\{[\\s\\S]*\\}/);\n    if (m) t = m[0];\n  }\n  return JSON.parse(t);\n}\n\nlet data;\ntry {\n  data = parseAgentJson($json.output);\n} catch (e) {\n  throw new Error('Visual Director Agent khong tra ve JSON hop le.');\n}\n\nreturn [{\n  json: {\n    ...$json,\n    scene: {\n      ...$json.scene,\n      eventQuery: data.event_query || $json.scene.visual_description,\n      stockQuery: data.stock_query || 'technology abstract background'\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2200,
+        1000
+      ],
+      "id": "aebbed47-ae3d-4025-88ca-32071718d3f0",
+      "name": "Attach Image Queries"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const path = require('path');\nconst fs = require('fs');\n\nconst BASE_DIR = $json.BASE_DIR;\nconst now = new Date();\nconst dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');\nconst slug = String($json.topic || 'video')\n  .toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '')\n  .replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 40);\n\n// videoId is stable across all items of the same execution (based on execution id)\nconst videoId = $json.videoId || (dateStr + '-' + slug + '-' + $execution.id);\nconst videoDir = path.join(BASE_DIR, videoId);\nconst scenesDir = path.join(videoDir, 'scenes');\nfs.mkdirSync(scenesDir, { recursive: true });\n\nreturn { json: { ...$json, videoId, videoDir, scenesDir } };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1950,
+        1000
+      ],
+      "id": "e3fc29ae-7986-4c92-a092-66e0fcbeb2c3",
+      "name": "Init Video Paths"
+    },
+    {
+      "parameters": {
+        "content": "## LOOP OVER SCENES\n\nRuns modules 6 (Voice), 7-partial (subtitle cue timing) and 8-partial\n(real photo per scene via Tavily image search, Pexels stock-photo\nfallback) once per scene. Final assembly (Ken Burns zoom + subtitle burn\n+ ffmpeg edit) happens once after the loop completes.",
+        "height": 260,
+        "width": 520,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1750,
+        760
+      ],
+      "id": "7194c14c-a14e-4a0f-a9a0-593ae376bb5d",
+      "name": "Note c6dff5eb"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -1700,
+        1000
+      ],
+      "id": "6967eb27-3975-4d11-b152-19ff2471745f",
+      "name": "Loop Over Scenes"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.VIETTTS_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ text: $json.scene.narration, voice: 'infore', silence_duration: 0.15, speech_rate: 1.05 }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          },
+          "timeout": 60000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -1450,
+        1560
+      ],
+      "id": "7f554614-4220-4b32-a3f1-2de4cd6967b3",
+      "name": "Generate Scene Voice (VietTTS)"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ $json.scenesDir }}/scene_{{ String($json.scene.sceneId).padStart(2,'0') }}.wav",
+        "dataPropertyName": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        -1200,
+        1560
+      ],
+      "id": "ccfafd71-7dac-4ff6-aaf9-e429506a36b9",
+      "name": "Write Scene Voice File"
+    },
+    {
+      "parameters": {
+        "command": "=ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 \"{{ $json.fileName }}\""
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        -950,
+        1560
+      ],
+      "id": "61607ba6-a9c9-4fcb-a24a-1d5e5a53d396",
+      "name": "Probe Voice Duration (ffprobe)"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Splits this scene's subtitle text into short, readable phrases (max 2 lines\n// worth each), spread proportionally across the REAL measured audio duration\n// (from ffprobe), and flags 1-2 'keywords' per phrase to highlight later.\nconst ctx = $json; // this item already carries scene + paths from the loop\n\nconst durationSec = parseFloat($('Probe Voice Duration (ffprobe)').first().json.stdout.trim()) || ctx.scene.duration;\n\nconst text = String(ctx.scene.subtitle || ctx.scene.narration || '').trim();\n// Split into clause-like chunks on punctuation, then re-group into <= 6-word phrases.\nconst rawParts = text.split(/(?<=[.,!?;:])\\s+|\\s{2,}/).filter(Boolean);\nlet words = [];\n(rawParts.length ? rawParts : [text]).forEach(p => words.push(...p.split(/\\s+/).filter(Boolean)));\n\nconst phrases = [];\nlet cur = [];\nfor (const w of words) {\n  cur.push(w);\n  if (cur.length >= 5) { phrases.push(cur.join(' ')); cur = []; }\n}\nif (cur.length) phrases.push(cur.join(' '));\nif (phrases.length === 0) phrases.push(text || '...');\n\nconst perCue = durationSec / phrases.length;\nconst STOPWORDS = new Set(['la','va','cua','o','trong','mot','nhung','de','cho','khi','the','nay','voi','tu','duoc']);\n\nfunction stripDiacritics(s) {\n  return s.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/\\u0111/g, 'd').replace(/\\u0110/g, 'D').toLowerCase();\n}\n\nconst cues = phrases.map((p, i) => {\n  const tokens = p.split(/\\s+/);\n  const keyword = tokens\n    .filter(t => !STOPWORDS.has(stripDiacritics(t.replace(/[^\\p{L}\\p{N}]/gu, ''))))\n    .sort((a, b) => b.length - a.length)[0] || tokens[0];\n  return {\n    start: +(i * perCue).toFixed(2),\n    end: +((i + 1) * perCue).toFixed(2),\n    text: p,\n    keyword\n  };\n});\n\nreturn [{\n  json: {\n    ...ctx,\n    scene: { ...ctx.scene, measuredDuration: durationSec, subtitleCues: cues },\n    audioPath: $('Write Scene Voice File').first().json.fileName\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -700,
+        1560
+      ],
+      "id": "f64323a3-c69a-4633-9a91-07dcf5017396",
+      "name": "Build Scene Subtitle Cues"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.tavily.com/search",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: $json.scene.eventQuery, search_depth: 'basic', include_images: true, include_image_descriptions: false, max_results: 3 }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -450,
+        1560
+      ],
+      "id": "170ee15a-865f-47dd-8075-2a069835fab6",
+      "name": "Tavily Image Search",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_ME",
+          "name": "Tavily API Key (Bearer)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const bad = (url) => {\n  if (!url) return true;\n  url = url.toLowerCase();\n  return (\n    url.endsWith('.svg') || url.includes('.svg?') || url.includes('logo') ||\n    url.includes('icon') || url.includes('favicon') ||\n    url.includes('lookaside.instagram') || url.includes('instagram.com')\n  );\n};\n\nlet imageUrl = null;\nif (Array.isArray($json.results)) {\n  for (const result of $json.results) {\n    if (!Array.isArray(result.images)) continue;\n    imageUrl = result.images.find(u => !bad(u));\n    if (imageUrl) break;\n  }\n}\nif (!imageUrl && Array.isArray($json.images)) {\n  imageUrl = $json.images.find(u => !bad(u));\n}\n\nconst ctx = $('Build Scene Subtitle Cues').first().json;\nreturn [{ json: { ...ctx, hasTavilyImage: !!imageUrl, tavilyImageUrl: imageUrl } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -200,
+        1560
+      ],
+      "id": "b21c7778-96f6-4265-83ec-4264bfd19f67",
+      "name": "Check Tavily Images"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.hasTavilyImage }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        50,
+        1560
+      ],
+      "id": "13a73f24-d371-4892-8981-0421f41afb44",
+      "name": "Has Tavily Image?"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.tavilyImageUrl }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "file"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        300,
+        1460
+      ],
+      "id": "c4e4ac94-2d33-4b64-ac6d-134f3645d373",
+      "name": "Download Image (Tavily)"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const scene = $input.item.json;\nconst binary = $input.item.binary && $input.item.binary.data;\nlet isValid = false;\n\nif (binary) {\n  const buffer = await this.helpers.getBinaryDataBuffer(0, 'data');\n  const isJpeg = buffer.length > 4 && buffer[0] === 0xFF && buffer[1] === 0xD8;\n  const isPng = buffer.length > 8 && buffer[0] === 0x89 && buffer[1] === 0x50;\n  const isWebp = buffer.length > 12 && buffer.slice(8, 12).toString() === 'WEBP';\n  isValid = buffer.length > 2000 && (isJpeg || isPng || isWebp);\n}\n\nreturn { json: { ...scene, tavilyImageValid: isValid }, binary: $input.item.binary };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        550,
+        1460
+      ],
+      "id": "cd163dce-eabc-445d-8097-7ae9fa3b6f19",
+      "name": "Validate Tavily Image"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.tavilyImageValid }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        800,
+        1460
+      ],
+      "id": "d62686ef-8849-4772-aea2-3a11e98a9960",
+      "name": "Is Tavily Image Valid?"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.pexels.com/v1/search?query={{ encodeURIComponent($json.scene.stockQuery) }}&orientation=portrait&per_page=1&size=large",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        300,
+        1760
+      ],
+      "id": "529a128d-7f31-4f34-a2a6-cb16344292e9",
+      "name": "Pexels Image Search",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_ME",
+          "name": "Pexels API Key"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const photos = $json.photos || [];\nconst photo = photos[0];\nconst imageUrl = photo && photo.src && (photo.src.large2x || photo.src.large || photo.src.original);\n\nconst ctx = $('Check Tavily Images').first().json;\nif (!imageUrl) {\n  throw new Error('Pexels khong tra ve anh phu hop cho query: ' + (ctx.scene.stockQuery || ''));\n}\n\nreturn { json: { ...ctx, pexelsImageUrl: imageUrl } };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        550,
+        1760
+      ],
+      "id": "23f079b4-20df-4a2c-ad3e-df8307bfd2c4",
+      "name": "Extract Pexels Image URL"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.pexelsImageUrl }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        800,
+        1760
+      ],
+      "id": "bc5d4278-237a-4291-b509-64ec08081bb0",
+      "name": "Download Image (Pexels)"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ $('Build Scene Subtitle Cues').first().json.scenesDir }}/scene_{{ String($('Build Scene Subtitle Cues').first().json.scene.sceneId).padStart(2,'0') }}_image.jpg",
+        "dataPropertyName": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        1560
+      ],
+      "id": "4c62c2db-4dca-4399-9637-72638df61536",
+      "name": "Write Scene Image File"
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $('Build Scene Subtitle Cues').first().json;\nconst imagePath = $json.fileName;\nconst staticData = $getWorkflowStaticData('global');\nstaticData.scenes = staticData.scenes || [];\nstaticData.scenes.push({\n  ...ctx.scene,\n  audioPath: ctx.audioPath,\n  imagePath\n});\nreturn [{ json: { ...ctx, imagePath } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1300,
+        1560
+      ],
+      "id": "118b89e3-ce6e-41d5-bf33-40d261f88555",
+      "name": "Finalize Scene"
+    },
+    {
+      "parameters": {
+        "content": "## MODULE 7 (assembly) - SUBTITLES\n## MODULE 8 (assembly) - VIDEO EDITING\n\nRuns once, after the scene loop finishes (done branch, index 0).\nBuilds a karaoke-style .ass subtitle file (MrBeast-style keyword pop),\nthen an ffmpeg script: each scene image gets scale+crop to fill 1080x1920\nplus a Ken Burns zoompan (per the storyboard's camera_motion), scenes are\njoined with xfade transitions, bgm+sfx mixed with sidechain ducking,\nloudnorm, subtitle burn-in.",
+        "height": 280,
+        "width": 560,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1700,
+        1900
+      ],
+      "id": "4024c5ef-2916-444d-b835-1ffaa52ed545",
+      "name": "Note 76f8d35b"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const fs = require('fs');\nconst path = require('path');\nconst staticData = $getWorkflowStaticData('global');\nconst scenes = (staticData.scenes || []).slice().sort((a, b) => a.sceneId - b.sceneId);\nconst ctx = $('Init Video Paths').first().json;\n\nconst storyboardPath = path.join(ctx.videoDir, 'storyboard.json');\nfs.writeFileSync(storyboardPath, JSON.stringify({\n  videoId: ctx.videoId,\n  topic: ctx.topic,\n  script: ctx.script,\n  totalDuration: ctx.totalDuration,\n  scenes\n}, null, 2));\n\nreturn [{ json: { ...ctx, storyboardPath, scenes } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1450,
+        1000
+      ],
+      "id": "dd07287a-f574-4d39-9a6f-b7a6571b5582",
+      "name": "Write storyboard.json"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Builds an .ass file with 2 styles: base text + a 'Key' style used only for\n// the highlighted keyword in each cue (bold, accent color, scale-pop-in),\n// which is what gives the MrBeast-style 'pop on keyword' subtitle feel.\nconst fs = require('fs');\nconst path = require('path');\nconst ctx = $json;\nconst scenes = ctx.scenes;\n\nfunction fmtTime(t) {\n  const h = Math.floor(t / 3600);\n  const m = Math.floor((t % 3600) / 60);\n  const s = t % 60;\n  return h + ':' + String(m).padStart(2, '0') + ':' + s.toFixed(2).padStart(5, '0');\n}\n\nconst header = '[Script Info]\\nScriptType: v4.00+\\nPlayResX: 1080\\nPlayResY: 1920\\n\\n' +\n  '[V4+ Styles]\\n' +\n  'Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\\n' +\n  'Style: Base,Montserrat ExtraBold,64,&H00FFFFFF,&H00FFFFFF,&H00101010,&H80000000,1,0,1,3,2,2,60,60,260,1\\n' +\n  'Style: Key,Montserrat ExtraBold,64,&H0000E5FF,&H0000E5FF,&H00101010,&H80000000,1,0,1,3,2,2,60,60,260,1\\n\\n' +\n  '[Events]\\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\\n';\n\nlet offset = 0;\nconst lines = [];\nfor (const scene of scenes) {\n  for (const cue of (scene.subtitleCues || [])) {\n    const start = offset + cue.start;\n    const end = offset + cue.end;\n    // wrap to max 2 lines, highlight the keyword with a quick pop-in scale animation\n    const words = cue.text.split(/\\s+/);\n    const mid = Math.ceil(words.length / 2);\n    const line1 = words.slice(0, mid).join(' ');\n    const line2 = words.slice(mid).join(' ');\n    const highlight = (w) => w.toLowerCase() === String(cue.keyword).toLowerCase()\n      ? '{\\\\t(0,120,\\\\fscx120\\\\fscy120)}{\\\\c&H00E5FF&}' + w + '{\\\\c&HFFFFFF&}{\\\\fscx100\\\\fscy100}'\n      : w;\n    const styled1 = line1.split(/\\s+/).map(highlight).join(' ');\n    const styled2 = line2.split(/\\s+/).map(highlight).join(' ');\n    const text = [styled1, styled2].filter(Boolean).join('\\\\N');\n    lines.push('Dialogue: 0,' + fmtTime(start) + ',' + fmtTime(end) + ',Base,,0,0,0,,{\\\\fad(80,80)}' + text);\n  }\n  offset += scene.measuredDuration || scene.duration;\n}\n\nconst assContent = header + lines.join('\\n') + '\\n';\nconst subtitlesPath = path.join(ctx.videoDir, 'subtitles.ass');\nfs.writeFileSync(subtitlesPath, assContent);\n\nreturn [{ json: { ...ctx, subtitlesPath } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1200,
+        1000
+      ],
+      "id": "fab87054-2d49-4c84-9530-741824b682d5",
+      "name": "Build Subtitles (ASS)"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Generates a bash script that: (1) turns each scene's still image into a clip\n// with scale+crop to fill the frame plus a Ken Burns zoompan (per the storyboard's\n// camera_motion), synced to the real narration duration, (2) concatenates scenes\n// with short crossfade (xfade) transitions, (3) mixes background music + sfx under\n// the narration with sidechain ducking, (4) applies loudnorm, (5) burns in\n// subtitles.ass, all at 1080x1920@30fps.\nconst path = require('path');\nconst ctx = $json;\nconst W = 1080, H = 1920, FPS = 30;\nconst dir = ctx.videoDir;\nconst scenes = ctx.scenes;\nconst bgm = path.join(ctx.BASE_DIR, 'assets', 'bgm', 'default.mp3');\nconst sfxWhoosh = path.join(ctx.BASE_DIR, 'assets', 'sfx', 'whoosh.wav');\n\nfunction zoompan(camera, frames) {\n  const base = `zoompan=d=${frames}:s=${W}x${H}:fps=${FPS}`;\n  switch (camera) {\n    case 'push-in': return `zoompan=z='min(1+0.18*on/${frames},1.18)':d=${frames}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=${W}x${H}:fps=${FPS}`;\n    case 'pull-out': return `zoompan=z='max(1.18-0.18*on/${frames},1.0)':d=${frames}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=${W}x${H}:fps=${FPS}`;\n    case 'pan-left': return `zoompan=z=1.12:d=${frames}:x='(iw-iw/zoom)*(1-on/${frames})':y='ih/2-(ih/zoom/2)':s=${W}x${H}:fps=${FPS}`;\n    case 'pan-right': return `zoompan=z=1.12:d=${frames}:x='(iw-iw/zoom)*(on/${frames})':y='ih/2-(ih/zoom/2)':s=${W}x${H}:fps=${FPS}`;\n    case 'slow-zoom':\n    case 'parallax':\n    case 'handheld-drift':\n    case 'static':\n    default: return `zoompan=z='min(zoom+0.0006,1.12)':d=${frames}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=${W}x${H}:fps=${FPS}`;\n  }\n}\n\nlet script = '#!/bin/bash\\nset -e\\ncd \"' + dir + '\"\\nexec 2>> \"' + dir + '/ffmpeg.log\"\\n\\n';\nconst processed = [];\nscenes.forEach((sc, i) => {\n  const idx = String(sc.sceneId).padStart(2, '0');\n  const dur = sc.measuredDuration || sc.duration;\n  const frames = Math.round(dur * FPS);\n  const img = 'scenes/scene_' + idx + '_image.jpg';\n  const audio = 'scenes/scene_' + idx + '.wav';\n  const out = 'scenes/scene_' + idx + '_final.mp4';\n  processed.push(out);\n  // still photo -> video: scale+crop to fill 1080x1920 (no bars), Ken Burns zoompan\n  // sized to this scene's real narration duration, muxed with the narration audio at\n  // a fixed 44100/stereo so concat never desyncs.\n  script += 'ffmpeg -y -loop 1 -i \"' + img + '\" -i \"' + audio + '\" ' +\n    '-filter_complex \"[0:v]scale=' + W + ':' + H + ':force_original_aspect_ratio=increase,crop=' + W + ':' + H + ',setsar=1,' + zoompan(sc.camera_motion, frames) + ',format=yuv420p[v]\" ' +\n    '-map \"[v]\" -map 1:a -c:v libx264 -preset veryfast -crf 18 -r ' + FPS + ' ' +\n    '-ar 44100 -ac 2 -c:a aac -t ' + dur.toFixed(2) + ' \"' + out + '\"\\n';\n});\n\n// crossfade-concat all processed scenes (xfade + acrossfade), 0.35s transitions\nconst XF = 0.35;\nlet filterChain = '';\nlet vLabel = '0:v'; let aLabel = '0:a'; let acc = 0;\nconst inputs = processed.map(p => '-i \"' + p + '\"').join(' ');\nprocessed.forEach((p, i) => {\n  if (i === 0) return;\n  const dur = (scenes[i - 1].measuredDuration || scenes[i - 1].duration);\n  acc += dur - XF;\n  const vOut = 'v' + i; const aOut = 'a' + i;\n  filterChain += '[' + vLabel + '][' + i + ':v]xfade=transition=fade:duration=' + XF + ':offset=' + acc.toFixed(2) + '[' + vOut + '];';\n  filterChain += '[' + aLabel + '][' + i + ':a]acrossfade=d=' + XF + '[' + aOut + '];';\n  vLabel = vOut; aLabel = aOut;\n});\n\nconst narrationMix = 'concat_video.mp4';\nscript += 'ffmpeg -y ' + inputs + ' -filter_complex \"' + filterChain +\n  '[' + vLabel + ']null[vout];[' + aLabel + ']anull[aout]\" ' +\n  '-map \"[vout]\" -map \"[aout]\" -c:v libx264 -preset veryfast -crf 18 -r ' + FPS + ' -c:a aac \"' + narrationMix + '\"\\n';\n\n// bgm + sfx under narration, ducked via sidechaincompress so music drops when voice speaks,\n// then loudnorm for consistent platform loudness, then burn subtitles.ass\nscript += 'if [ -f \"' + bgm + '\" ]; then\\n' +\n  '  ffmpeg -y -i \"' + narrationMix + '\" -stream_loop -1 -i \"' + bgm + '\" -filter_complex \"' +\n  '[1:a]volume=0.18[bgm];[0:a][bgm]sidechaincompress=threshold=0.05:ratio=8:attack=5:release=300[bgmduck];' +\n  '[0:a][bgmduck]amix=inputs=2:duration=first:dropout_transition=2,loudnorm=I=-14:TP=-1.5:LRA=11[aout]\" ' +\n  '-map 0:v -map \"[aout]\" -c:v copy -c:a aac mixed.mp4\\n' +\n  'else\\n' +\n  '  ffmpeg -y -i \"' + narrationMix + '\" -af loudnorm=I=-14:TP=-1.5:LRA=11 -c:v copy -c:a aac mixed.mp4\\n' +\n  'fi\\n\\n';\n\nscript += 'ffmpeg -y -i mixed.mp4 -vf \"ass=subtitles.ass\" -c:v libx264 -preset veryfast -crf 17 ' +\n  '-c:a copy final_video.mp4\\n';\n\nconst renderScriptPath = path.join(dir, 'render_video.sh');\nrequire('fs').writeFileSync(renderScriptPath, script, { mode: 0o755 });\n\nreturn [{ json: { ...ctx, renderScriptPath, finalVideoPath: path.join(dir, 'final_video.mp4') } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -950,
+        1000
+      ],
+      "id": "e560c335-4b83-418b-bd4f-ee1120635ea5",
+      "name": "Build Render Script"
+    },
+    {
+      "parameters": {
+        "command": "=bash \"{{ $json.renderScriptPath }}\""
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        -700,
+        1000
+      ],
+      "id": "40722113-1347-499b-9bd5-1557db9d721a",
+      "name": "Execute Render Script (ffmpeg)"
+    },
+    {
+      "parameters": {
+        "content": "## MODULE 9 - SEO\n\nTitle, description, keywords, hashtags + platform-specific captions.\nOptimized for search/CTR - explicitly NOT clickbait.",
+        "height": 220,
+        "width": 440,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -500,
+        760
+      ],
+      "id": "f7d10111-a3b4-4339-a5a8-d5280de9d175",
+      "name": "Note dcfb2111"
+    },
+    {
+      "parameters": {
+        "model": "qwen2.5:14b",
+        "options": {
+          "format": "json"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        -450,
+        1260
+      ],
+      "id": "fd12ce40-c556-4d9e-96a9-c35d232aa507",
+      "name": "Ollama Chat Model (SEO)",
+      "credentials": {
+        "ollamaApi": {
+          "id": "REPLACE_ME",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Bạn là chuyên gia SEO cho video ngắn công nghệ, đăng TikTok / YouTube Shorts / Facebook Reels.\n\nChủ đề: {{ $json.topic }}\nScript: {{ $json.script.full_script }}\n\nTạo nội dung SEO tối ưu tìm kiếm và CTR thật, KHÔNG giật gân/clickbait sai sự thật. Caption cho từng nền tảng cần khác nhau về giọng điệu/hashtag phù hợp platform đó.\n\nOutput CHỈ JSON, đúng schema:\n{\n  \"title\": \"\", \"description\": \"\", \"keywords\": [\"\"], \"hashtags\": [\"\"],\n  \"tiktok_caption\": \"\", \"facebook_caption\": \"\", \"youtube_shorts_description\": \"\"\n}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -200,
+        1000
+      ],
+      "id": "486782d4-d777-4c50-bf93-a5f23e2178fb",
+      "name": "SEO Agent"
+    },
+    {
+      "parameters": {
+        "jsCode": "function parseAgentJson(raw) {\n  if (typeof raw !== 'string') return raw;\n  let t = raw.trim();\n  const fence = t.match(/^```(?:json)?\\s*([\\s\\S]*?)\\s*```$/i);\n  if (fence) t = fence[1];\n  if (!/^[\\{\\[]/.test(t.trim())) {\n    const m = t.match(/\\{[\\s\\S]*\\}/);\n    if (m) t = m[0];\n  }\n  return JSON.parse(t);\n}\n\nlet seo;\ntry {\n  seo = parseAgentJson($json.output);\n} catch (e) {\n  throw new Error('SEO Agent khong tra ve JSON hop le.');\n}\n\nconst ctx = $('Build Render Script').first().json;\nreturn [{ json: { ...ctx, seo } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        50,
+        1000
+      ],
+      "id": "1ec69e31-934a-4dd7-b539-7fa67f81766a",
+      "name": "Prepare SEO Metadata"
+    },
+    {
+      "parameters": {
+        "content": "## MODULE 10 - PUBLISHING\n\nUploads final_video.mp4 to YouTube (native node) and publishes to\nTikTok (Content Posting API) + Facebook (Graph API Reels flow) via\nHTTP Request. TikTok/Facebook calls require an approved developer app;\nsee PREMIUM_WORKFLOW.md for the exact onboarding steps.",
+        "height": 260,
+        "width": 520,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        250,
+        760
+      ],
+      "id": "01f7918d-cbbd-446d-a43b-94c7f553650c",
+      "name": "Note b009eb94"
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "fileSelector": "={{ $json.finalVideoPath }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        300,
+        1000
+      ],
+      "id": "c3eeb7d5-e43f-42b0-ae38-f1d21b638776",
+      "name": "Read Final Video File"
+    },
+    {
+      "parameters": {
+        "resource": "video",
+        "operation": "upload",
+        "title": "={{ $('Prepare SEO Metadata').first().json.seo.title }}",
+        "regionCode": "VN",
+        "categoryId": "28",
+        "options": {
+          "description": "={{ $('Prepare SEO Metadata').first().json.seo.youtube_shorts_description }}",
+          "privacyStatus": "private",
+          "tags": "={{ ($('Prepare SEO Metadata').first().json.seo.keywords || []).join(',') }}"
+        }
+      },
+      "type": "n8n-nodes-base.youTube",
+      "typeVersion": 1,
+      "position": [
+        550,
+        850
+      ],
+      "id": "3c92e065-cd4e-4eb1-9843-77ac31344223",
+      "name": "Upload To YouTube",
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "REPLACE_ME",
+          "name": "YouTube account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://open.tiktokapis.com/v2/post/publish/video/init/",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  post_info: {\n    title: $('Prepare SEO Metadata').first().json.seo.tiktok_caption,\n    privacy_level: 'SELF_ONLY',\n    disable_duet: false, disable_comment: false, disable_stitch: false\n  },\n  source_info: { source: 'FILE_UPLOAD', video_size: $binary.data.fileSize, chunk_size: $binary.data.fileSize, total_chunk_count: 1 }\n}) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        550,
+        1000
+      ],
+      "id": "804c4f48-2fff-4944-ba6f-1e016ff0b236",
+      "name": "Publish To TikTok",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_ME",
+          "name": "TikTok Content Posting API"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v19.0/{{ $json.facebookPageId || 'REPLACE_ME_PAGE_ID' }}/video_reels",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  upload_phase: 'start'\n}) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        550,
+        1150
+      ],
+      "id": "370d2835-842d-4c2a-9ef7-153d899bd413",
+      "name": "Publish To Facebook Reels",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_ME",
+          "name": "Facebook Graph API"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Appends one JSON line per published video to publish_log.jsonl so that the\n// independent Analytics workflow (module 11) knows what to pull metrics for.\nconst fs = require('fs');\nconst path = require('path');\nconst ctx = $('Prepare SEO Metadata').first().json;\n\nlet youtubeId = null;\ntry { youtubeId = $('Upload To YouTube').first().json.id; } catch (e) {}\n\nconst logPath = path.join(ctx.BASE_DIR, 'analytics', 'publish_log.jsonl');\nconst entry = {\n  videoId: ctx.videoId,\n  topic: ctx.topic,\n  publishedAt: new Date().toISOString(),\n  finalVideoPath: ctx.finalVideoPath,\n  youtubeVideoId: youtubeId,\n  title: ctx.seo.title,\n  hashtags: ctx.seo.hashtags\n};\nfs.appendFileSync(logPath, JSON.stringify(entry) + '\\n');\n\nreturn [{ json: entry }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        1000
+      ],
+      "id": "9b4e57f4-9624-4720-b5d2-680e93a8704e",
+      "name": "Log Publish Results"
+    }
+  ],
+  "connections": {
+    "Ollama Chat Model (Trend Synthesis)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Trend Synthesis Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model (Deep Synthesis)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Deep Research Synthesis Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model (Script)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Script Writer Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model (Storyboard)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Storyboard Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model (Visual Director)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Visual Director Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Load Config & Learnings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Config & Learnings": {
+      "main": [
+        [
+          {
+            "node": "Build Trend Search Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Trend Search Query": {
+      "main": [
+        [
+          {
+            "node": "Tavily Search (Trend)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tavily Search (Trend)": {
+      "main": [
+        [
+          {
+            "node": "Parse Trend Search Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Trend Search Results": {
+      "main": [
+        [
+          {
+            "node": "Trend Synthesis Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trend Synthesis Agent": {
+      "main": [
+        [
+          {
+            "node": "Select Top Topic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Select Top Topic": {
+      "main": [
+        [
+          {
+            "node": "Build Deep Research Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Deep Research Query": {
+      "main": [
+        [
+          {
+            "node": "Tavily Search (Deep Research)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tavily Search (Deep Research)": {
+      "main": [
+        [
+          {
+            "node": "Parse Deep Research Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Deep Research Results": {
+      "main": [
+        [
+          {
+            "node": "Deep Research Synthesis Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deep Research Synthesis Agent": {
+      "main": [
+        [
+          {
+            "node": "Validate Facts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Facts": {
+      "main": [
+        [
+          {
+            "node": "Script Writer Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Script Writer Agent": {
+      "main": [
+        [
+          {
+            "node": "Validate Script",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Script": {
+      "main": [
+        [
+          {
+            "node": "Storyboard Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Storyboard Agent": {
+      "main": [
+        [
+          {
+            "node": "Normalize Storyboard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Storyboard": {
+      "main": [
+        [
+          {
+            "node": "Visual Director Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Visual Director Agent": {
+      "main": [
+        [
+          {
+            "node": "Attach Image Queries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Attach Image Queries": {
+      "main": [
+        [
+          {
+            "node": "Init Video Paths",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Init Video Paths": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Scenes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Scenes": {
+      "main": [
+        [
+          {
+            "node": "Write storyboard.json",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Generate Scene Voice (VietTTS)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Scene Voice (VietTTS)": {
+      "main": [
+        [
+          {
+            "node": "Write Scene Voice File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Scene Voice File": {
+      "main": [
+        [
+          {
+            "node": "Probe Voice Duration (ffprobe)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Probe Voice Duration (ffprobe)": {
+      "main": [
+        [
+          {
+            "node": "Build Scene Subtitle Cues",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Scene Subtitle Cues": {
+      "main": [
+        [
+          {
+            "node": "Tavily Image Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tavily Image Search": {
+      "main": [
+        [
+          {
+            "node": "Check Tavily Images",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Tavily Images": {
+      "main": [
+        [
+          {
+            "node": "Has Tavily Image?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Tavily Image?": {
+      "main": [
+        [
+          {
+            "node": "Download Image (Tavily)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Pexels Image Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Image (Tavily)": {
+      "main": [
+        [
+          {
+            "node": "Validate Tavily Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Tavily Image": {
+      "main": [
+        [
+          {
+            "node": "Is Tavily Image Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Tavily Image Valid?": {
+      "main": [
+        [
+          {
+            "node": "Write Scene Image File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Pexels Image Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pexels Image Search": {
+      "main": [
+        [
+          {
+            "node": "Extract Pexels Image URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Pexels Image URL": {
+      "main": [
+        [
+          {
+            "node": "Download Image (Pexels)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Image (Pexels)": {
+      "main": [
+        [
+          {
+            "node": "Write Scene Image File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Scene Image File": {
+      "main": [
+        [
+          {
+            "node": "Finalize Scene",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finalize Scene": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Scenes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write storyboard.json": {
+      "main": [
+        [
+          {
+            "node": "Build Subtitles (ASS)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Subtitles (ASS)": {
+      "main": [
+        [
+          {
+            "node": "Build Render Script",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Render Script": {
+      "main": [
+        [
+          {
+            "node": "Execute Render Script (ffmpeg)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model (SEO)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "SEO Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Render Script (ffmpeg)": {
+      "main": [
+        [
+          {
+            "node": "SEO Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SEO Agent": {
+      "main": [
+        [
+          {
+            "node": "Prepare SEO Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Final Video File": {
+      "main": [
+        [
+          {
+            "node": "Upload To YouTube",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Publish To TikTok",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Publish To Facebook Reels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare SEO Metadata": {
+      "main": [
+        [
+          {
+            "node": "Read Final Video File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload To YouTube": {
+      "main": [
+        [
+          {
+            "node": "Log Publish Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Publish To TikTok": {
+      "main": [
+        [
+          {
+            "node": "Log Publish Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Publish To Facebook Reels": {
+      "main": [
+        [
+          {
+            "node": "Log Publish Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "premium-ai-shorts-pipeline"
+  }
+}

@@ -1,0 +1,291 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## MODULE 11 - ANALYTICS (independent workflow)\n\nRuns on its own daily schedule (separate from the content pipeline).\nPulls YouTube stats for every video in publish_log.jsonl, appends to\nanalytics_store.jsonl, then aggregates results into learnings.json,\nwhich Module 1 (Trend Research) of the main pipeline reads to steer\nfuture topic selection toward what actually performs.",
+        "height": 280,
+        "width": 560,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1200,
+        700
+      ],
+      "id": "164b1b62-1ac9-4749-97f9-0dfca941567b",
+      "name": "Note a3b89481"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 22
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1200,
+        1000
+      ],
+      "id": "22461341-0ff8-46fc-b650-cc70ad8d6384",
+      "name": "Schedule Trigger (Analytics)"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const fs = require('fs');\nconst path = require('path');\n\nconst BASE_DIR = process.env.AI_SHORTS_BASE_DIR || '/Users/tuht1/ai-shorts-videos';\nconst logPath = path.join(BASE_DIR, 'analytics', 'publish_log.jsonl');\nif (!fs.existsSync(logPath)) return [];\n\nconst lines = fs.readFileSync(logPath, 'utf8').split('\\n').filter(Boolean);\nconst cutoff = Date.now() - 30 * 24 * 3600 * 1000;\nconst videos = lines\n  .map(l => { try { return JSON.parse(l); } catch (e) { return null; } })\n  .filter(v => v && v.youtubeVideoId && new Date(v.publishedAt).getTime() >= cutoff);\n\nreturn videos.map(v => ({ json: { ...v, BASE_DIR } }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -950,
+        1000
+      ],
+      "id": "20fb7905-f11e-47d7-bff6-02a6e0affc61",
+      "name": "Load Publish Log"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -700,
+        1000
+      ],
+      "id": "0743586e-6ffd-4c38-9f98-b2c8a6507132",
+      "name": "Loop Over Videos"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://www.googleapis.com/youtube/v3/videos",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "youTubeOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "part",
+              "value": "statistics"
+            },
+            {
+              "name": "id",
+              "value": "={{ $json.youtubeVideoId }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -450,
+        900
+      ],
+      "id": "f3a23a6b-2b0f-4c27-8f88-d975de1305c5",
+      "name": "Get YouTube Video Stats",
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "REPLACE_ME",
+          "name": "YouTube account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://youtubeanalytics.googleapis.com/v2/reports",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "youTubeOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "ids",
+              "value": "channel==MINE"
+            },
+            {
+              "name": "startDate",
+              "value": "={{ $json.publishedAt.slice(0,10) }}"
+            },
+            {
+              "name": "endDate",
+              "value": "={{ $now.toISODate() }}"
+            },
+            {
+              "name": "metrics",
+              "value": "views,averageViewDuration,averageViewPercentage,likes,comments,shares,subscribersGained"
+            },
+            {
+              "name": "filters",
+              "value": "=video=={{ $json.youtubeVideoId }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -450,
+        1100
+      ],
+      "id": "ad895291-eec9-4f15-b93a-d840fb7ff8a1",
+      "name": "Get YouTube Analytics Report",
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "REPLACE_ME",
+          "name": "YouTube account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const video = $('Loop Over Videos').first().json;\nconst stats = ($('Get YouTube Video Stats').first().json.items || [])[0]?.statistics || {};\nconst report = $('Get YouTube Analytics Report').first().json;\nconst row = (report.rows || [])[0] || [];\nconst cols = (report.columnHeaders || []).map(c => c.name);\n\nfunction col(name) {\n  const i = cols.indexOf(name);\n  return i >= 0 ? row[i] : null;\n}\n\nreturn [{\n  json: {\n    videoId: video.videoId,\n    youtubeVideoId: video.youtubeVideoId,\n    topic: video.topic,\n    title: video.title,\n    hashtags: video.hashtags,\n    pulledAt: new Date().toISOString(),\n    views: Number(stats.viewCount || col('views') || 0),\n    likes: Number(stats.likeCount || col('likes') || 0),\n    comments: Number(stats.commentCount || col('comments') || 0),\n    shares: Number(col('shares') || 0),\n    avgViewDurationSec: Number(col('averageViewDuration') || 0),\n    retentionPct: Number(col('averageViewPercentage') || 0),\n    subscribersGained: Number(col('subscribersGained') || 0)\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -200,
+        1000
+      ],
+      "id": "986cd4a5-be24-472f-b9a2-fe5e9057bb3a",
+      "name": "Normalize Metrics"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst path = require('path');\nconst BASE_DIR = $('Load Publish Log').first().json.BASE_DIR;\nconst storePath = path.join(BASE_DIR, 'analytics', 'analytics_store.jsonl');\nfs.appendFileSync(storePath, JSON.stringify($json) + '\\n');\nreturn [{ json: $json }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        50,
+        1000
+      ],
+      "id": "487b413f-f9b8-4b8a-8344-b9fa57b6a0fb",
+      "name": "Append Analytics Store"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Aggregates analytics_store.jsonl into learnings.json consumed by the main\n// pipeline's 'Load Config & Learnings' node (Module 1).\nconst fs = require('fs');\nconst path = require('path');\nconst BASE_DIR = process.env.AI_SHORTS_BASE_DIR || '/Users/tuht1/ai-shorts-videos';\nconst storePath = path.join(BASE_DIR, 'analytics', 'analytics_store.jsonl');\nif (!fs.existsSync(storePath)) return [{ json: { skipped: true } }];\n\nconst rows = fs.readFileSync(storePath, 'utf8').split('\\n').filter(Boolean)\n  .map(l => { try { return JSON.parse(l); } catch (e) { return null; } })\n  .filter(Boolean);\n\n// keep only the most recent pull per video\nconst latestByVideo = {};\nfor (const r of rows) latestByVideo[r.videoId] = r;\nconst latest = Object.values(latestByVideo);\n\nfunction score(r) {\n  // retention + shares/comments weighted higher than raw views (proxy for\n  // 'people who WANT to finish watching', matching the stated priority)\n  return (r.retentionPct || 0) * 2 + (r.shares || 0) * 3 + (r.comments || 0) * 2 + (r.likes || 0) * 0.5 + (r.views || 0) * 0.01;\n}\n\nconst ranked = latest.slice().sort((a, b) => score(b) - score(a));\nconst topPerformingTopics = ranked.slice(0, 5).map(r => r.topic);\nconst topPerformingHooks = ranked.slice(0, 5).map(r => r.title);\nconst avoid = ranked.slice(-5).filter(r => score(r) < score(ranked[0]) * 0.2).map(r => r.topic);\n\nconst learnings = { topPerformingTopics, topPerformingHooks, avoid, updatedAt: new Date().toISOString() };\nfs.writeFileSync(path.join(BASE_DIR, 'analytics', 'learnings.json'), JSON.stringify(learnings, null, 2));\n\nreturn [{ json: learnings }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        300,
+        1000
+      ],
+      "id": "e99bac4d-a627-497b-8026-d800ab038282",
+      "name": "Compute Learnings"
+    }
+  ],
+  "connections": {
+    "Schedule Trigger (Analytics)": {
+      "main": [
+        [
+          {
+            "node": "Load Publish Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Publish Log": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Videos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Videos": {
+      "main": [
+        [
+          {
+            "node": "Compute Learnings",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get YouTube Video Stats",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get YouTube Analytics Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get YouTube Video Stats": {
+      "main": [
+        [
+          {
+            "node": "Normalize Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get YouTube Analytics Report": {
+      "main": [
+        [
+          {
+            "node": "Normalize Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Metrics": {
+      "main": [
+        [
+          {
+            "node": "Append Analytics Store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append Analytics Store": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Videos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "premium-ai-shorts-pipeline"
+  }
+}

@@ -1,0 +1,802 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 6
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [3104, 768],
+      "id": "b2a0f087-621e-4900-b2d4-3ac1854a0e89",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "url": "https://vietstock.vn/",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [3328, 768],
+      "id": "6753d168-658e-44d6-a28e-23d7ee0c872e",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "operation": "extractHtmlContent",
+        "dataPropertyName": "=data",
+        "extractionValues": {
+          "values": [
+            {
+              "key": "headline",
+              "cssSelector": ".single_post_text h4 a"
+            },
+            {
+              "key": "url",
+              "cssSelector": ".single_post_text h4 a",
+              "returnValue": "attribute",
+              "attribute": "href"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [3552, 768],
+      "id": "eeddef1a-41f0-4237-bc28-be6331978ed9",
+      "name": "HTML"
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "headline"
+            },
+            {
+              "fieldToAggregate": "url"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [3776, 768],
+      "id": "61dd1366-ce4a-4d47-8101-8d31cf0f60c0",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "headline,url",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [4000, 768],
+      "id": "b8e7e1ba-34a0-434d-a662-98f27cf8792c",
+      "name": "Split Out Headlines"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [4224, 768],
+      "id": "12e81d8e-9964-49de-b41e-b985c89c2a8a",
+      "name": "Limit To 1 Headline"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const item = $input.item.json;\nconst now = new Date();\nconst dateStr = now.toISOString().slice(0,10).replace(/-/g,'');\nconst slug = (item.headline || 'video')\n  .toLowerCase()\n  .normalize('NFD').replace(/[\\u0300-\\u036f]/g,'')\n  .replace(/đ/g,'d').replace(/Đ/g,'d')\n  .replace(/[^a-z0-9]+/g,'-')\n  .replace(/(^-|-$)/g,'')\n  .slice(0,40);\nconst rand = Math.random().toString(36).slice(2,7);\nconst sourceUrl = (item.url || '').startsWith('http') ? item.url : 'https://vietstock.vn' + item.url;\n\nreturn {\n  json: {\n    ...item,\n    videoId: `${dateStr}-${slug}-${rand}`,\n    channelName: 'Tui đầu tư',\n    sourceUrl\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [4448, 768],
+      "id": "ee5da95f-2e92-4361-a06d-a7d6f96e2f6c",
+      "name": "Generate Video ID"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.headline }}",
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [4800, 992],
+      "id": "b71bc696-6bb3-4107-ac70-09d2c03c67a6",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "model": "gemma4:e4b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [4672, 992],
+      "id": "abda6a0c-3a9e-407c-baf0-c0b62d39f0a0",
+      "name": "Ollama Chat Model (Research)",
+      "credentials": {
+        "ollamaApi": {
+          "id": "LyoMMrEgRWUOqs0p",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "query": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Query', `Use this tool ONLY when additional background research is needed.\n\nNever use this tool to open or read the original article.\n\nSearch using natural language.\n\nNever search using only a URL.\n\nNever search using only site: operators.\n\nAlways include descriptive keywords.\n\nGood examples:\n\nApple earnings Q2 Reuters\n\nVietnam inflation June 2026\n\nFederal Reserve interest rates July 2026\n\nBad examples:\n\nsite:reuters.com\n\nhttps://abc.com/news\n\nsite:vietstock.vn/...`, 'string') }}",
+        "options": {}
+      },
+      "type": "@tavily/n8n-nodes-tavily.tavilyTool",
+      "typeVersion": 1,
+      "position": [4928, 992],
+      "id": "0fda4c83-9515-4eb6-85b0-d00dc1b0d29b",
+      "name": "Search in Tavily",
+      "credentials": {
+        "tavilyApi": {
+          "id": "FzCSQUCeWSUUEBab",
+          "name": "Tavily account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Bạn là CHUYÊN GIA PHÂN TÍCH TÀI CHÍNH và BIÊN TẬP VIÊN YouTube chuyên sản xuất video phân tích kinh tế – tài chính dạng faceless cho kênh \"Tui đầu tư\".\n\n==================================================\nVAI TRÒ\n==================================================\n\nBạn có 2 nhiệm vụ:\n\n1. Research chủ đề (dựa trên input + mở rộng khi cần thiết)\n2. Viết script phân tích chuyên sâu dạng MC Bloomberg\n\nKHÔNG tạo storyboard\nKHÔNG mô tả hình ảnh / animation / Remotion / CapCut\nKHÔNG viết subtitle\nKHÔNG hướng dẫn dựng video\n\nChỉ tạo nội dung lời thoại.\n\n==================================================\nINPUT\n==================================================\n\nHeadline:\n{{ $json.headline }}\n\nSource:\n{{ $json.sourceUrl }}\n\n==================================================\nRESEARCH RULES\n==================================================\n\nBạn được dùng bài viết input làm nguồn chính.\n\nChỉ dùng Tavily khi thật sự cần bổ sung hoặc xác minh dữ liệu.\n\nTối đa 2 lần Tavily:\n\n- Lần 1: bối cảnh / nguyên nhân / lịch sử / chính sách\n- Lần 2: xác minh số liệu quan trọng\n\nKhông search nếu thông tin đã đủ.\n\nƯu tiên nguồn:\nReuters, Bloomberg, WSJ, CNBC, IMF, World Bank, Fed, ECB, SEC, Nasdaq, Trading Economics\n\nWikipedia chỉ dùng background.\n\nKhông dùng blog, forum, mạng xã hội.\n\nNếu dữ liệu không chắc chắn:\n→ phải nói rõ \"không có dữ liệu xác nhận\"\n\n==================================================\nPHÂN TÍCH BẮT BUỘC TRƯỚC KHI VIẾT\n==================================================\n\nTự phân tích:\n\n- Điều gì vừa xảy ra?\n- Vì sao quan trọng?\n- Nguyên nhân trực tiếp & nguyên nhân sâu xa\n- Ai hưởng lợi / ai chịu thiệt\n- Tác động tới:\n  chứng khoán, vàng, crypto, USD, lãi suất, BĐS\n- Kịch bản tiếp theo của thị trường\n\n==================================================\nYÊU CẦU STYLE\n==================================================\n\n- Giọng MC Bloomberg\n- Trung lập, phân tích, không giật tít\n- Không cảm xúc quá mức\n- Không clickbait\n- Giải thích đơn giản, dễ hiểu\n- Không bullet trong script\n- Không liệt kê khô khan\n\nThuật ngữ tài chính phải giải thích ngay trong câu.\n\n==================================================\nCẤU TRÚC SCRIPT (BẮT BUỘC)\n==================================================\n\n1. Hook (20–30 giây)\n2. Tóm tắt sự kiện\n3. Điều gì đang thực sự xảy ra\n4. Nguyên nhân trực tiếp\n5. Nguyên nhân sâu xa / bối cảnh vĩ mô\n6. Dữ liệu & số liệu quan trọng\n7. Tác động thị trường (multi-asset)\n8. Rủi ro & kịch bản tiếp theo\n9. Nhà đầu tư cần theo dõi gì\n10. Kết luận + lời mời theo dõi kênh \"Tui đầu tư\"\n\n==================================================\nDURATION TARGET\n==================================================\n\n- 8 đến 11 phút video (mục tiêu ~10 phút)\n- tương đương 1200 – 1800 từ\n- nhịp nói tự nhiên (không nhồi chữ)\n- ưu tiên clarity hơn độ dài\n\n==================================================\nOUTPUT REQUIREMENT\n==================================================\n\nChỉ trả về JSON hợp lệ.\n\nKHÔNG markdown\nKHÔNG giải thích\nKHÔNG text ngoài JSON\n\n==================================================\nOUTPUT FORMAT\n==================================================\n\n{\n  \"title\": \"\",\n  \"description\": \"\",\n  \"hashtags\": [],\n  \"tags\": [],\n  \"duration_target\": 600,\n  \"video_style\": \"deep_dive\",\n  \"hook\": \"\",\n  \"script\": \"\",\n  \"cta\": \"\"\n}\n\n==================================================\nSEO RULES\n==================================================\n\nTitle:\n- tự nhiên\n- SEO tốt\n- không clickbait\n- không ALL CAPS\n\nDescription:\n- 2–4 đoạn\n- giải thích rõ nội dung video\n\nHashtags:\n- 5–8 hashtag\n- bắt buộc:\n  #taichinh\n  #chungkhoan\n  #tuidautu\n\nTags:\n- macro, finance, thị trường, doanh nghiệp liên quan\n\ncta:\n- phải nhắc tên kênh \"Tui đầu tư\" một cách tự nhiên (mời subscribe/theo dõi), không giật tít, không ép buộc\n\n==================================================\nFINAL RULE\n==================================================\n\n- Không bịa dữ liệu\n- Không tự tạo số liệu không xác minh\n- Nếu thiếu dữ kiện → nói rõ \"không có dữ liệu xác nhận\"",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [4736, 768],
+      "id": "96d72270-ea79-4a77-a725-9ab964c82976",
+      "name": "Research Agent",
+      "retryOnFail": false
+    },
+    {
+      "parameters": {
+        "model": "gemma4:e4b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [5216, 992],
+      "id": "60c52f5d-40c7-4d15-8521-bbd434bc827b",
+      "name": "Ollama Chat Model (Planner)",
+      "credentials": {
+        "ollamaApi": {
+          "id": "LyoMMrEgRWUOqs0p",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Bạn là Senior Storyboard Director của một studio chuyên sản xuất video YouTube tài chính chất lượng cao cho kênh \"Tui đầu tư\".\n\n==================================================\nROLE\n==================================================\n\nBạn KHÔNG phải là nhà báo.\n\nBạn KHÔNG phải là chuyên gia SEO.\n\nBạn KHÔNG phải là người research.\n\nBạn KHÔNG được sửa script.\n\nBạn KHÔNG được thêm ý mới.\n\nBạn KHÔNG được bỏ bất kỳ ý nào.\n\nBạn KHÔNG được viết lại narration.\n\nNhiệm vụ DUY NHẤT của bạn là:\n\nBiến script thành Storyboard JSON để render video bằng ảnh tĩnh (ComfyUI) + hiệu ứng camera (Ken Burns).\n\n==================================================\nINPUT\n==================================================\n\nBạn sẽ nhận JSON từ Research Agent.\n{{ $json.output }}\n\n==================================================\nOBJECTIVE\n==================================================\n\nHãy chia toàn bộ script thành nhiều scene.\n\nMỗi scene chỉ thể hiện MỘT ý.\n\nKhông chia theo số câu.\n\nKhông chia ngẫu nhiên.\n\nMột scene mới bắt đầu khi:\n\n- Chủ đề thay đổi\n- Đối tượng thay đổi\n- Công ty thay đổi\n- Quốc gia thay đổi\n- Có số liệu mới\n- Có biểu đồ\n- Có timeline\n- Có quote\n- Có kết luận\n- Có CTA\n\nToàn bộ narration phải được chia hết thành các scene.\n\nKhông được bỏ sót.\n\n==================================================\nVISUAL THINKING\n==================================================\n\nTrước khi tạo scene hãy tự suy nghĩ:\n\n\"Nếu người xem tắt âm thanh, họ có hiểu nội dung đang nói không?\"\n\nNếu chưa thì hãy chọn visual rõ ràng hơn.\n\nVisual phải trực quan.\n\nƯu tiên mô tả ảnh tĩnh chất lượng cao kiểu:\n\n- Photorealistic stock photo\n- Infographic style\n- Macro/close-up shot\n- Aerial shot\n- Financial market scene\n- Trading floor\n- Government building\n- Factory\n- Shipping\n- Business district\n\n==================================================\nVISUAL MAPPING\n==================================================\n\nNếu script nói về:\n\nGold\n\n→\n\ngold bars close up photorealistic\n\ngold vault interior\n\ngold refinery\n\n--------------------------------\n\nSilver\n\n→\n\nsilver bars stacked\n\nsilver refinery industrial\n\ncommodity trading floor\n\n--------------------------------\n\nBitcoin\n\n→\n\nbitcoin mining warehouse servers\n\ncrypto trading screens closeup\n\nblockchain server room\n\n--------------------------------\n\nEthereum\n\n→\n\nethereum digital visualization abstract\n\ncrypto exchange dashboard screen\n\n--------------------------------\n\nFederal Reserve\n\n→\n\nfederal reserve building washington\n\nus central bank exterior\n\n--------------------------------\n\nInflation\n\n→\n\nsupermarket price tags closeup\n\nshopping mall consumer spending\n\n--------------------------------\n\nInterest Rate\n\n→\n\nbank headquarters modern facade\n\nmortgage documents desk\n\n--------------------------------\n\nStock Market\n\n→\n\nstock exchange trading floor wide shot\n\nwall street traders working\n\nstock market chart screen closeup\n\n--------------------------------\n\nVietnam Stock Market\n\n→\n\nho chi minh stock exchange building\n\nvietnam financial district skyline\n\n--------------------------------\n\nBank\n\n→\n\nmodern bank headquarters exterior\n\nbank vault door closeup\n\n--------------------------------\n\nReal Estate\n\n→\n\nluxury apartment buildings skyline\n\nconstruction site aerial view\n\n--------------------------------\n\nManufacturing\n\n→\n\nfactory production line robots\n\nindustrial assembly line workers\n\n--------------------------------\n\nShipping\n\n→\n\ncargo ship container terminal\n\nport crane aerial view\n\n--------------------------------\n\nOil\n\n→\n\noil refinery sunset industrial\n\noil storage tanks aerial\n\n--------------------------------\n\nNatural Gas\n\n→\n\nlng terminal industrial\n\ngas pipeline infrastructure\n\n--------------------------------\n\nElectric Vehicle\n\n→\n\nelectric vehicle factory assembly\n\nev charging station modern\n\n--------------------------------\n\nArtificial Intelligence\n\n→\n\nai server room data center\n\ngpu cluster closeup\n\n==================================================\nSCENE TYPES\n==================================================\n\nChỉ được sử dụng:\n\ntitle\n\nimage\n\nchart\n\nlogo\n\nmap\n\ntimeline\n\nquote\n\ncomparison\n\nending\n\n==================================================\nASSET TYPE\n==================================================\n\nCHỈ được sử dụng: image\n\n(Pipeline chỉ tạo ảnh tĩnh bằng ComfyUI local, không có video clip thật. Hiệu ứng chuyển động — Ken Burns / pan / zoom — do camera + animation tạo ra khi render, không cần video.)\n\n==================================================\nCAMERA\n==================================================\n\nChỉ được sử dụng:\n\nstatic\n\nslow-zoom\n\npush-in\n\npull-out\n\npan-left\n\npan-right\n\nparallax\n\n==================================================\nANIMATION\n==================================================\n\nChỉ được sử dụng:\n\nfade\n\nslide-left\n\nslide-right\n\nzoom-in\n\nzoom-out\n\nscale\n\nblur\n\ncount-up\n\n==================================================\nTRANSITION\n==================================================\n\nChỉ được sử dụng:\n\nfade\n\ncrossfade\n\nwipe\n\nslide\n\ncut\n\n==================================================\nSUBTITLE STYLE\n==================================================\n\nChỉ được sử dụng:\n\nmrbeast\n\nnews\n\nminimal\n\nhighlight\n\n==================================================\nIMPORTANCE\n==================================================\n\nChỉ được sử dụng:\n\nhigh\n\nmedium\n\nlow\n\nQuy tắc:\n\nhigh\n\n- Hook\n- Breaking News\n- Số liệu lớn\n- Kết luận quan trọng\n\nmedium\n\n- Giải thích\n- Bối cảnh\n- Nguyên nhân\n\nlow\n\n- Đoạn chuyển ý\n- CTA\n\n==================================================\nDURATION\n==================================================\n\nTitle: 3-5 giây\n\nHook: 5-8 giây\n\nImage: 4-8 giây\n\nChart: 5-8 giây\n\nTimeline: 5-8 giây\n\nEnding: 4-6 giây\n\nCTA: 4-6 giây\n\n==================================================\nRULES\n==================================================\n\nNarration phải GIỮ NGUYÊN. Không sửa. Không thêm. Không bỏ. Không đổi thứ tự.\n\n==================================================\nOUTPUT JSON\n==================================================\n\nChỉ trả về JSON hợp lệ.\n\n{\n  \"video_style\": \"finance\",\n  \"theme\": \"modern\",\n  \"aspect_ratio\": \"9:16\",\n  \"fps\": 30,\n  \"scenes\": [\n    {\n      \"id\": 1,\n      \"scene_type\": \"title\",\n      \"asset\": {\n        \"type\": \"image\",\n        \"query\": \"gold bars close up photorealistic\"\n      },\n      \"duration\": 5,\n      \"importance\": \"high\",\n      \"camera\": \"slow-zoom\",\n      \"animation\": \"zoom-in\",\n      \"transition\": \"fade\",\n      \"subtitle_style\": \"mrbeast\",\n      \"headline\": \"Giá vàng lập đỉnh\",\n      \"highlight_words\": [\"Giá vàng\"],\n      \"narration\": \"Giá vàng vừa lập mức cao nhất lịch sử.\"\n    }\n  ]\n}\n\n==================================================\nSTRICT RULES\n==================================================\n\nChỉ trả về JSON. Không markdown. Không giải thích.\n\nAsset query phải bằng tiếng Anh, cụ thể, mô tả rõ chủ thể + góc máy + phong cách (photorealistic/aerial/closeup...), tránh query chung chung như \"gold\", \"bank\", \"market\".\n\n==================================================\nQUALITY CHECK\n==================================================\n\nTrước khi trả kết quả hãy tự kiểm tra:\n\n- JSON có parse được không?\n- Có bỏ sót đoạn narration nào không?\n- asset.type có LUÔN LÀ \"image\" không?\n- Asset query có đủ cụ thể không?\n- Scene có đúng thứ tự không?\n\nNếu còn lỗi, hãy tự sửa trước khi trả về JSON.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [5136, 768],
+      "id": "3a840dba-c842-4525-8eda-11faa1df17eb",
+      "name": "Screen Planner"
+    },
+    {
+      "parameters": {
+        "jsCode": "const BACKSLASH = String.fromCharCode(92);\nconst NEWLINE = String.fromCharCode(10);\nconst CARRIAGE_RETURN = String.fromCharCode(13);\n\nfunction repairJsonQuotes(text) {\n  let result = '';\n  let inString = false;\n  let escapeNext = false;\n  for (let i = 0; i < text.length; i++) {\n    const ch = text[i];\n    if (!inString) {\n      result += ch;\n      if (ch === '\"') inString = true;\n      continue;\n    }\n    if (escapeNext) {\n      result += ch;\n      escapeNext = false;\n      continue;\n    }\n    if (ch === BACKSLASH) {\n      result += ch;\n      escapeNext = true;\n      continue;\n    }\n    if (ch === '\"') {\n      let j = i + 1;\n      while (j < text.length && /\\s/.test(text[j])) j++;\n      const next = text[j];\n      if (next === undefined || next === ',' || next === '}' || next === ']' || next === ':') {\n        result += ch;\n        inString = false;\n      } else {\n        result += BACKSLASH + '\"';\n      }\n      continue;\n    }\n    if (ch === NEWLINE) {\n      result += BACKSLASH + 'n';\n      continue;\n    }\n    if (ch === CARRIAGE_RETURN) {\n      continue;\n    }\n    result += ch;\n  }\n  return result;\n}\n\nfunction safeJsonParse(text, sourceName) {\n  try {\n    return JSON.parse(text);\n  } catch (e1) {\n    try {\n      return JSON.parse(repairJsonQuotes(text));\n    } catch (e2) {\n      throw new Error(`${sourceName} output kh\u00f4ng ph\u1ea3i JSON h\u1ee3p l\u1ec7 (\u0111\u00e3 th\u1eed t\u1ef1 s\u1eeda nh\u01b0ng v\u1eabn l\u1ed7i): ${e2.message}`);\n    }\n  }\n}\n\nreturn $input.all().flatMap(item => {\n  let raw = item.json.output;\n  if (typeof raw === 'string') {\n    raw = raw.trim();\n    const fenceMatch = raw.match(/^```(?:json)?\\s*([\\s\\S]*?)\\s*```$/i);\n    if (fenceMatch) raw = fenceMatch[1];\n  }\n\n  const data = safeJsonParse(raw, 'Screen Planner');\n\n  // Lo\u1ea1i b\u1ecf scene c\u00f3 narration r\u1ed7ng/placeholder, tr\u00e1nh l\u1ed7i Piper TTS \"text is empty\"\n  const cleanScenes = data.scenes.filter(scene => {\n    const text = (scene.narration || '').trim();\n    return text.length > 0 && !/^\\(.*\\)$/.test(text); // lo\u1ea1i lu\u00f4n c\u00e1c placeholder d\u1ea1ng \"(...)\"\n  });\n\n  return cleanScenes.map(scene => ({\n    json: {\n      video_style: data.video_style,\n      theme: data.theme,\n      aspect_ratio: data.aspect_ratio,\n      fps: data.fps,\n      ...scene\n    }\n  }));\n});"') inString = true;\n      continue;\n    }\n    if (escapeNext) {\n      result += ch;\n      escapeNext = false;\n      continue;\n    }\n    if (ch === BACKSLASH) {\n      result += ch;\n      escapeNext = true;\n      continue;\n    }\n    if (ch === '\\"') {\n      let j = i + 1;\n      while (j < text.length && /\\s/.test(text[j])) j++;\n      const next = text[j];\n      if (next === undefined || next === ',' || next === '}' || next === ']' || next === ':') {\n        result += ch;\n        inString = false;\n      } else {\n        result += BACKSLASH + '\\"';\n      }\n      continue;\n    }\n    if (ch === NEWLINE) {\n      result += BACKSLASH + 'n';\n      continue;\n    }\n    if (ch === CARRIAGE_RETURN) {\n      continue;\n    }\n    result += ch;\n  }\n  return result;\n}\n\nfunction safeJsonParse(text, sourceName) {\n  try {\n    return JSON.parse(text);\n  } catch (e1) {\n    try {\n      return JSON.parse(repairJsonQuotes(text));\n    } catch (e2) {\n      throw new Error(`${sourceName} output không phải JSON hợp lệ (đã thử tự sửa nhưng vẫn lỗi): ${e2.message}`);\n    }\n  }\n}\n\nreturn $input.all().flatMap(item => {\n  let raw = item.json.output;\n  if (typeof raw === 'string') {\n    raw = raw.trim();\n    const fenceMatch = raw.match(/^```(?:json)?\\s*([\\s\\S]*?)\\s*```$/i);\n    if (fenceMatch) raw = fenceMatch[1];\n  }\n\n  const data = safeJsonParse(raw, 'Screen Planner');\n\n  // Loại bỏ scene có narration rỗng/placeholder, tránh lỗi Piper TTS \"text is empty\"\n  const cleanScenes = data.scenes.filter(scene => {\n    const text = (scene.narration || '').trim();\n    return text.length > 0 && !/^\\(.*\\)$/.test(text); // loại luôn các placeholder dạng \"(...)\"\n  });\n\n  return cleanScenes.map(scene => ({\n    json: {\n      video_style: data.video_style,\n      theme: data.theme,\n      aspect_ratio: data.aspect_ratio,\n      fps: data.fps,\n      ...scene\n    }\n  }));\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [5488, 768],
+      "id": "ba240150-b220-42e8-aafc-f217925492a6",
+      "name": "normalize scene data"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://0.0.0.0:8001/tts",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ text: $json.narration, voice: \"vi_VN-vais1000-medium\" }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [5712, 768],
+      "id": "b1bd2db0-4185-4c4f-bc33-3c87607d75fa",
+      "name": "Generate audio (Piper TTS)"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map((item, index) => ({\n  json: {\n    ...item.json,\n    sceneId: index + 1\n  },\n  binary: {\n    audio: item.binary.data\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [5936, 768],
+      "id": "2bbaa293-0bf5-4c69-b91b-26761a8fdf01",
+      "name": "attach audio to scene"
+    },
+    {
+      "parameters": {
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nstaticData.scenes = [];\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [6160, 950],
+      "id": "a1b2c3d4-0001-4aaa-8aaa-000000000002",
+      "name": "Reset Scene Store"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [6384, 768],
+      "id": "f8e7392f-f58f-4487-8d51-6fcbabf70a46",
+      "name": "Loop Over Scenes"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// !!! ĐỔI TÊN FILE CHECKPOINT CHO ĐÚNG VỚI FILE BẠN CÓ TRONG ComfyUI/models/checkpoints !!!\nconst CHECKPOINT_NAME = \"sdxl_lightning_8step.safetensors\";\n\nconst scene = $input.item.json;\nconst isVertical = (scene.aspect_ratio || \"9:16\") === \"9:16\";\nconst width = isVertical ? 832 : 1216;\nconst height = isVertical ? 1216 : 832;\n\nconst positivePrompt = `${scene.asset.query}, cinematic lighting, high detail, financial news b-roll, no text, no watermark`;\nconst negativePrompt = \"text, watermark, logo, blurry, low quality, deformed, extra limbs, cartoon, illustration\";\nconst seed = Math.floor(Math.random() * 1e9);\n\nconst workflow = {\n  \"3\": { \"class_type\": \"KSampler\", \"inputs\": {\n    \"seed\": seed, \"steps\": 8, \"cfg\": 1.0, \"sampler_name\": \"euler\",\n    \"scheduler\": \"sgm_uniform\", \"denoise\": 1.0,\n    \"model\": [\"4\", 0], \"positive\": [\"6\", 0], \"negative\": [\"7\", 0], \"latent_image\": [\"5\", 0]\n  }},\n  \"4\": { \"class_type\": \"CheckpointLoaderSimple\", \"inputs\": { \"ckpt_name\": CHECKPOINT_NAME } },\n  \"5\": { \"class_type\": \"EmptyLatentImage\", \"inputs\": { \"width\": width, \"height\": height, \"batch_size\": 1 } },\n  \"6\": { \"class_type\": \"CLIPTextEncode\", \"inputs\": { \"text\": positivePrompt, \"clip\": [\"4\", 1] } },\n  \"7\": { \"class_type\": \"CLIPTextEncode\", \"inputs\": { \"text\": negativePrompt, \"clip\": [\"4\", 1] } },\n  \"8\": { \"class_type\": \"VAEDecode\", \"inputs\": { \"samples\": [\"3\", 0], \"vae\": [\"4\", 2] } },\n  \"9\": { \"class_type\": \"SaveImage\", \"inputs\": { \"filename_prefix\": `tuidautu_${scene.sceneId}`, \"images\": [\"8\", 0] } }\n};\n\nreturn {\n  json: {\n    ...scene,\n    comfyPayload: { prompt: workflow, client_id: \"n8n-tuidautu\" }\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [6608, 576],
+      "id": "129f9997-685d-4729-b0f3-e2eda7ba3a75",
+      "name": "build comfyui payload"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8188/prompt",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.comfyPayload) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [6832, 576],
+      "id": "aadc639c-b5c9-413e-9f38-fffd4bb54a61",
+      "name": "Queue ComfyUI prompt"
+    },
+    {
+      "parameters": {
+        "amount": 15
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [7056, 576],
+      "id": "ae6f0ddb-8446-4aa9-98b0-66e3370703eb",
+      "name": "Wait for image render",
+      "webhookId": "d4e44444-wait-webhook"
+    },
+    {
+      "parameters": {
+        "url": "=http://127.0.0.1:8188/history/{{ $('Queue ComfyUI prompt').item.json.prompt_id }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [7280, 576],
+      "id": "d592018e-ed6c-4f5f-8ab9-d38f9fcd6c6f",
+      "name": "Get ComfyUI history"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const promptId = $('Queue ComfyUI prompt').item.json.prompt_id;\nconst history = $json[promptId];\n\nif (!history || !history.outputs) {\n  throw new Error('ComfyUI chưa render xong (tăng thời gian Wait for image render) hoặc prompt_id không khớp: ' + promptId);\n}\n\nconst imageInfo = history.outputs['9'].images[0];\nconst scene = { ...$('build comfyui payload').item.json };\ndelete scene.comfyPayload;\n\nreturn {\n  json: {\n    ...scene,\n    _comfyFilename: imageInfo.filename,\n    _comfySubfolder: imageInfo.subfolder || ''\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [7504, 576],
+      "id": "73acf4f4-2a00-4c28-a9fe-7b8cff70175e",
+      "name": "extract image info"
+    },
+    {
+      "parameters": {
+        "url": "=http://127.0.0.1:8188/view?filename={{ encodeURIComponent($json._comfyFilename) }}&subfolder={{ encodeURIComponent($json._comfySubfolder) }}&type=output",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [7728, 576],
+      "id": "c16ca62c-ff62-493b-891b-6211c6d01ea7",
+      "name": "Fetch image from ComfyUI"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// !!! ĐỔI đường dẫn gốc cho đúng máy bạn !!!\nconst BASE_DIR = \"/Users/YOUR_USERNAME/tui-dau-tu-videos\";\n\nconst scene = { ...$input.item.json };\ndelete scene._comfyFilename;\ndelete scene._comfySubfolder;\n\nconst videoId = $('Generate Video ID').first().json.videoId;\nconst sceneId = scene.sceneId;\nconst dir = `${BASE_DIR}/${videoId}`;\nconst audioPath = `${dir}/scene_${sceneId}_audio.wav`;\nconst imagePath = `${dir}/scene_${sceneId}_image.png`;\n\nconst staticData = $getWorkflowStaticData('global');\nif (!staticData.scenes) staticData.scenes = [];\nstaticData.scenes.push({\n  sceneId,\n  scene_type: scene.scene_type,\n  headline: scene.headline,\n  narration: scene.narration,\n  duration: scene.duration,\n  camera: scene.camera,\n  animation: scene.animation,\n  transition: scene.transition,\n  subtitle_style: scene.subtitle_style,\n  highlight_words: scene.highlight_words,\n  importance: scene.importance,\n  audioPath,\n  imagePath\n});\n\nreturn {\n  json: { ...scene, videoId, audioPath, imagePath },\n  binary: {\n    audio: $('attach audio to scene').item.binary.audio,\n    image: $input.item.binary.data\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [7952, 576],
+      "id": "e925a398-e115-4f9b-a103-9220cf538aa6",
+      "name": "finalize scene assets"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ $json.audioPath }}",
+        "dataPropertyName": "audio",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [8176, 576],
+      "id": "b7665f5c-9f94-4dd7-9a17-261af1cc552f",
+      "name": "Write audio file"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ $json.imagePath }}",
+        "dataPropertyName": "image",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [8400, 752],
+      "id": "b6126eaa-f437-4f8a-9f15-e179f6535634",
+      "name": "Write image file"
+    },
+    {
+      "parameters": {
+        "jsCode": "// !!! ĐỔI đường dẫn gốc cho đúng máy bạn (phải khớp với finalize scene assets) !!!\nconst BASE_DIR = \"/Users/YOUR_USERNAME/tui-dau-tu-videos\";\n\nconst staticData = $getWorkflowStaticData('global');\nconst videoId = $('Generate Video ID').first().json.videoId;\n\nconst storyboard = {\n  channel: 'Tui đầu tư',\n  videoId,\n  aspect_ratio: '9:16',\n  fps: 30,\n  scenes: (staticData.scenes || []).sort((a, b) => a.sceneId - b.sceneId)\n};\n\nconst jsonStr = JSON.stringify(storyboard, null, 2);\nconst buffer = Buffer.from(jsonStr, 'utf-8');\n\nreturn [{\n  json: {\n    videoId,\n    storyboardPath: `${BASE_DIR}/${videoId}/storyboard.json`\n  },\n  binary: {\n    storyboard: await this.helpers.prepareBinaryData(buffer, 'storyboard.json', 'application/json')\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [6608, 992],
+      "id": "94902442-e191-4a47-a9ad-73c46bdc8896",
+      "name": "prepare storyboard.json"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ $json.storyboardPath }}",
+        "dataPropertyName": "storyboard",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [6832, 992],
+      "id": "89251c0c-716a-4a06-bb96-0237e055faf2",
+      "name": "Write storyboard.json"
+    },
+    {
+      "parameters": {
+        "jsCode": "const BACKSLASH = String.fromCharCode(92);\nconst NEWLINE = String.fromCharCode(10);\nconst CARRIAGE_RETURN = String.fromCharCode(13);\n\nfunction repairJsonQuotes(text) {\n  let result = '';\n  let inString = false;\n  let escapeNext = false;\n  for (let i = 0; i < text.length; i++) {\n    const ch = text[i];\n    if (!inString) {\n      result += ch;\n      if (ch === '\"') inString = true;\n      continue;\n    }\n    if (escapeNext) {\n      result += ch;\n      escapeNext = false;\n      continue;\n    }\n    if (ch === BACKSLASH) {\n      result += ch;\n      escapeNext = true;\n      continue;\n    }\n    if (ch === '\"') {\n      let j = i + 1;\n      while (j < text.length && /\\s/.test(text[j])) j++;\n      const next = text[j];\n      if (next === undefined || next === ',' || next === '}' || next === ']' || next === ':') {\n        result += ch;\n        inString = false;\n      } else {\n        result += BACKSLASH + '\"';\n      }\n      continue;\n    }\n    if (ch === NEWLINE) {\n      result += BACKSLASH + 'n';\n      continue;\n    }\n    if (ch === CARRIAGE_RETURN) {\n      continue;\n    }\n    result += ch;\n  }\n  return result;\n}\n\nfunction safeJsonParse(text, sourceName) {\n  try {\n    return JSON.parse(text);\n  } catch (e1) {\n    try {\n      return JSON.parse(repairJsonQuotes(text));\n    } catch (e2) {\n      throw new Error(`${sourceName} output kh\u00f4ng ph\u1ea3i JSON h\u1ee3p l\u1ec7 (\u0111\u00e3 th\u1eed t\u1ef1 s\u1eeda nh\u01b0ng v\u1eabn l\u1ed7i): ${e2.message}`);\n    }\n  }\n}\n\nlet raw = $input.first().json.output;\nif (typeof raw === 'string') {\n  raw = raw.trim();\n  const fenceMatch = raw.match(/^```(?:json)?\\s*([\\s\\S]*?)\\s*```$/i);\n  if (fenceMatch) raw = fenceMatch[1];\n}\n\nconst data = safeJsonParse(raw, 'Research Agent');\n\nconst staticData = $getWorkflowStaticData('global');\nstaticData.videoMeta = {\n  title: data.title || '',\n  description: data.description || '',\n  hashtags: Array.isArray(data.hashtags) ? data.hashtags : [],\n  tags: Array.isArray(data.tags) ? data.tags : [],\n  cta: data.cta || ''\n};\n\nreturn [{ json: staticData.videoMeta }];"') inString = true;\n      continue;\n    }\n    if (escapeNext) {\n      result += ch;\n      escapeNext = false;\n      continue;\n    }\n    if (ch === BACKSLASH) {\n      result += ch;\n      escapeNext = true;\n      continue;\n    }\n    if (ch === '\\"') {\n      let j = i + 1;\n      while (j < text.length && /\\s/.test(text[j])) j++;\n      const next = text[j];\n      if (next === undefined || next === ',' || next === '}' || next === ']' || next === ':') {\n        result += ch;\n        inString = false;\n      } else {\n        result += BACKSLASH + '\\"';\n      }\n      continue;\n    }\n    if (ch === NEWLINE) {\n      result += BACKSLASH + 'n';\n      continue;\n    }\n    if (ch === CARRIAGE_RETURN) {\n      continue;\n    }\n    result += ch;\n  }\n  return result;\n}\n\nfunction safeJsonParse(text, sourceName) {\n  try {\n    return JSON.parse(text);\n  } catch (e1) {\n    try {\n      return JSON.parse(repairJsonQuotes(text));\n    } catch (e2) {\n      throw new Error(`${sourceName} output không phải JSON hợp lệ (đã thử tự sửa nhưng vẫn lỗi): ${e2.message}`);\n    }\n  }\n}\n\nlet raw = $input.first().json.output;\nif (typeof raw === 'string') {\n  raw = raw.trim();\n  const fenceMatch = raw.match(/^```(?:json)?\\s*([\\s\\S]*?)\\s*```$/i);\n  if (fenceMatch) raw = fenceMatch[1];\n}\n\nconst data = safeJsonParse(raw, 'Research Agent');\n\nconst staticData = $getWorkflowStaticData('global');\nstaticData.videoMeta = {\n  title: data.title || '',\n  description: data.description || '',\n  hashtags: Array.isArray(data.hashtags) ? data.hashtags : [],\n  tags: Array.isArray(data.tags) ? data.tags : [],\n  cta: data.cta || ''\n};\n\nreturn [{ json: staticData.videoMeta }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [4960, 550],
+      "id": "a1b2c3d4-0001-4aaa-8aaa-000000000001",
+      "name": "Save Video Metadata"
+    },
+    {
+      "parameters": {
+        "jsCode": "const BASE_DIR = '/Users/YOUR_USERNAME/tui-dau-tu-videos';\nconst SUBSCRIBE_CLIP = `${BASE_DIR}/assets/subscribe-tui-dau-tu_final.mp4`;\n\nconst W = 832;\nconst H = 1216;\nconst FPS = 30;\n\nconst staticData = $getWorkflowStaticData('global');\nconst scenes = (staticData.scenes || []).slice().sort((a, b) => a.sceneId - b.sceneId);\nif (scenes.length === 0) {\n  throw new Error('Không có scene nào trong staticData.scenes để render video.');\n}\n\nconst videoId = $('Generate Video ID').first().json.videoId;\nconst dir = `${BASE_DIR}/${videoId}`;\nconst finalVideoPath = `${dir}/final_video.mp4`;\nconst scriptPath = `${dir}/render.sh`;\n\nfunction kenBurnsFilter(camera, duration) {\n  const frames = Math.max(1, Math.round(duration * FPS));\n  const zoomStep = 0.0015;\n  if (camera === 'slow-zoom' || camera === 'push-in') {\n    return `zoompan=z='min(zoom+${zoomStep},1.2)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${W}x${H}:fps=${FPS}`;\n  }\n  if (camera === 'pull-out') {\n    return `zoompan=z='if(eq(on,0),1.2,max(zoom-${zoomStep},1.0))':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${W}x${H}:fps=${FPS}`;\n  }\n  if (camera === 'pan-left') {\n    return `zoompan=z='1.15':x='if(eq(on,0),iw-iw/zoom,x-2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${W}x${H}:fps=${FPS}`;\n  }\n  if (camera === 'pan-right') {\n    return `zoompan=z='1.15':x='if(eq(on,0),0,x+2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${W}x${H}:fps=${FPS}`;\n  }\n  if (camera === 'parallax') {\n    return `zoompan=z='min(zoom+${zoomStep},1.25)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${W}x${H}:fps=${FPS}`;\n  }\n  return `scale=${W}:${H}`;\n}\n\nconst lines = [];\nlines.push('#!/bin/bash');\nlines.push('set -e');\nlines.push(`mkdir -p '${dir}'`);\n\nconst sceneOutputs = [];\nscenes.forEach((scene) => {\n  const outPath = `${dir}/scene_${scene.sceneId}_render.mp4`;\n  sceneOutputs.push(outPath);\n  const duration = scene.duration || 5;\n  const filter = kenBurnsFilter(scene.camera, duration);\n  const cmd = `ffmpeg -y -loop 1 -i '${scene.imagePath}' -i '${scene.audioPath}' -filter_complex \"[0:v]scale=${W * 2}:${H * 2},${filter},format=yuv420p[v]\" -map \"[v]\" -map 1:a -c:v libx264 -pix_fmt yuv420p -c:a aac -b:a 192k -shortest -t ${duration} '${outPath}'`;\n  lines.push(cmd);\n});\n\nconst allClips = [...sceneOutputs, SUBSCRIBE_CLIP];\nconst inputArgs = allClips.map((p) => `-i '${p}'`).join(' ');\nconst filterParts = allClips.map((_, i) => `[${i}:v]scale=${W}:${H}:force_original_aspect_ratio=decrease,pad=${W}:${H}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=${FPS},format=yuv420p[v${i}];[${i}:a]aformat=sample_rates=44100:channel_layouts=stereo[a${i}]`).join(';');\nconst concatInputs = allClips.map((_, i) => `[v${i}][a${i}]`).join('');\nconst concatFilter = `${filterParts};${concatInputs}concat=n=${allClips.length}:v=1:a=1[outv][outa]`;\n\nlines.push(`ffmpeg -y ${inputArgs} -filter_complex \"${concatFilter}\" -map \"[outv]\" -map \"[outa]\" -c:v libx264 -pix_fmt yuv420p -c:a aac -b:a 192k '${finalVideoPath}'`);\n\nconst scriptContent = lines.join('\\n') + '\\n';\n\nreturn [{\n  json: { videoId, dir, scriptPath, finalVideoPath },\n  binary: {\n    script: await this.helpers.prepareBinaryData(Buffer.from(scriptContent, 'utf-8'), 'render.sh', 'text/x-shellscript')\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [7056, 1000],
+      "id": "a1b2c3d4-0001-4aaa-8aaa-000000000003",
+      "name": "Build ffmpeg render script"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ $json.scriptPath }}",
+        "dataPropertyName": "script",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [7280, 1000],
+      "id": "a1b2c3d4-0001-4aaa-8aaa-000000000004",
+      "name": "Write render script"
+    },
+    {
+      "parameters": {
+        "command": "=bash \"{{ $json.scriptPath }}\"",
+        "executeOnce": true
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [7504, 1000],
+      "id": "a1b2c3d4-0001-4aaa-8aaa-000000000005",
+      "name": "Render video with ffmpeg"
+    },
+    {
+      "parameters": {
+        "jsCode": "const build = $('Build ffmpeg render script').first().json;\nreturn [{ json: { videoId: build.videoId, finalVideoPath: build.finalVideoPath } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [7728, 1000],
+      "id": "a1b2c3d4-0001-4aaa-8aaa-000000000006",
+      "name": "Attach video path"
+    },
+    {
+      "parameters": {
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nconst meta = staticData.videoMeta || {};\nconst scenes = staticData.scenes || [];\nconst mainQuery = scenes.length ? scenes[0].headline : (meta.title || 'finance market analysis');\n\nconst videoId = $('Generate Video ID').first().json.videoId;\n\nconst positivePrompt = `${mainQuery}, financial news thumbnail background, photorealistic, dramatic lighting, high detail, cinematic, no text, no watermark`;\nconst negativePrompt = 'text, watermark, logo, blurry, low quality, deformed, extra limbs, cartoon, illustration';\nconst seed = Math.floor(Math.random() * 1e9);\n\nconst CHECKPOINT_NAME = 'sdxl_lightning_8step.safetensors';\nconst width = 1280;\nconst height = 720;\n\nconst workflow = {\n  '3': { class_type: 'KSampler', inputs: {\n    seed, steps: 8, cfg: 1.0, sampler_name: 'euler',\n    scheduler: 'sgm_uniform', denoise: 1.0,\n    model: ['4', 0], positive: ['6', 0], negative: ['7', 0], latent_image: ['5', 0]\n  }},\n  '4': { class_type: 'CheckpointLoaderSimple', inputs: { ckpt_name: CHECKPOINT_NAME } },\n  '5': { class_type: 'EmptyLatentImage', inputs: { width, height, batch_size: 1 } },\n  '6': { class_type: 'CLIPTextEncode', inputs: { text: positivePrompt, clip: ['4', 1] } },\n  '7': { class_type: 'CLIPTextEncode', inputs: { text: negativePrompt, clip: ['4', 1] } },\n  '8': { class_type: 'VAEDecode', inputs: { samples: ['3', 0], vae: ['4', 2] } },\n  '9': { class_type: 'SaveImage', inputs: { filename_prefix: 'tuidautu_thumb', images: ['8', 0] } }\n};\n\nreturn [{\n  json: {\n    videoId,\n    comfyPayload: { prompt: workflow, client_id: 'n8n-tuidautu-thumb' }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [7056, 1224],
+      "id": "a1b2c3d4-0001-4aaa-8aaa-000000000007",
+      "name": "Build thumbnail prompt"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8188/prompt",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.comfyPayload) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [7280, 1224],
+      "id": "a1b2c3d4-0001-4aaa-8aaa-000000000008",
+      "name": "Queue ComfyUI thumbnail"
+    },
+    {
+      "parameters": {
+        "amount": 15
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [7504, 1224],
+      "id": "a1b2c3d4-0001-4aaa-8aaa-000000000009",
+      "name": "Wait for thumbnail render",
+      "webhookId": "d4e44444-wait-thumb-webhook"
+    },
+    {
+      "parameters": {
+        "url": "=http://127.0.0.1:8188/history/{{ $('Queue ComfyUI thumbnail').item.json.prompt_id }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [7728, 1224],
+      "id": "a1b2c3d4-0001-4aaa-8aaa-000000000010",
+      "name": "Get ComfyUI thumbnail history"
+    },
+    {
+      "parameters": {
+        "jsCode": "const BASE_DIR = '/Users/YOUR_USERNAME/tui-dau-tu-videos';\nconst promptId = $('Queue ComfyUI thumbnail').item.json.prompt_id;\nconst history = $json[promptId];\n\nif (!history || !history.outputs) {\n  throw new Error('ComfyUI chưa render xong thumbnail (tăng thời gian Wait for thumbnail render) hoặc prompt_id không khớp: ' + promptId);\n}\n\nconst imageInfo = history.outputs['9'].images[0];\nconst videoId = $('Build thumbnail prompt').item.json.videoId;\nconst thumbnailPath = `${BASE_DIR}/${videoId}/thumbnail.png`;\n\nreturn [{\n  json: {\n    videoId,\n    thumbnailPath,\n    _comfyFilename: imageInfo.filename,\n    _comfySubfolder: imageInfo.subfolder || ''\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [7952, 1224],
+      "id": "a1b2c3d4-0001-4aaa-8aaa-000000000011",
+      "name": "Extract thumbnail info"
+    },
+    {
+      "parameters": {
+        "url": "=http://127.0.0.1:8188/view?filename={{ encodeURIComponent($json._comfyFilename) }}&subfolder={{ encodeURIComponent($json._comfySubfolder) }}&type=output",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [8176, 1224],
+      "id": "a1b2c3d4-0001-4aaa-8aaa-000000000012",
+      "name": "Fetch thumbnail image"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ $json.thumbnailPath }}",
+        "dataPropertyName": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [8400, 1224],
+      "id": "a1b2c3d4-0001-4aaa-8aaa-000000000013",
+      "name": "Write thumbnail file"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combinationMode": "mergeByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [8624, 1100],
+      "id": "a1b2c3d4-0001-4aaa-8aaa-000000000014",
+      "name": "Merge video and thumbnail"
+    },
+    {
+      "parameters": {
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nconst meta = staticData.videoMeta || {};\nconst videoId = $('Generate Video ID').first().json.videoId;\nconst finalVideoPath = $('Attach video path').first().json.finalVideoPath;\nconst thumbnailPath = $('Extract thumbnail info').first().json.thumbnailPath;\n\nconst hashtags = (meta.hashtags || []).map((h) => (h.startsWith('#') ? h : `#${h}`));\nconst description = [meta.description || '', meta.cta || '', hashtags.join(' ')]\n  .filter(Boolean)\n  .join('\\n\\n');\n\nreturn [{\n  json: {\n    videoId,\n    finalVideoPath,\n    thumbnailPath,\n    title: meta.title || `Tui đầu tư - ${videoId}`,\n    description,\n    tags: meta.tags || []\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [8848, 1100],
+      "id": "a1b2c3d4-0001-4aaa-8aaa-000000000015",
+      "name": "Prepare YouTube metadata"
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "fileSelector": "={{ $json.finalVideoPath }}",
+        "options": {
+          "dataPropertyName": "data"
+        }
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [9072, 1100],
+      "id": "a1b2c3d4-0001-4aaa-8aaa-000000000016",
+      "name": "Read final video file"
+    },
+    {
+      "parameters": {
+        "resource": "video",
+        "operation": "upload",
+        "title": "={{ $('Prepare YouTube metadata').item.json.title }}",
+        "regionCode": "VN",
+        "categoryId": "25",
+        "binaryData": true,
+        "binaryPropertyName": "data",
+        "options": {
+          "description": "={{ $('Prepare YouTube metadata').item.json.description }}",
+          "tags": "={{ $('Prepare YouTube metadata').item.json.tags.join(',') }}",
+          "privacyStatus": "private"
+        }
+      },
+      "type": "n8n-nodes-base.youTube",
+      "typeVersion": 1,
+      "position": [9296, 1100],
+      "id": "a1b2c3d4-0001-4aaa-8aaa-000000000017",
+      "name": "Upload video to YouTube",
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "REPLACE_WITH_YOUR_YOUTUBE_CREDENTIAL_ID",
+          "name": "YouTube account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "fileSelector": "={{ $('Prepare YouTube metadata').item.json.thumbnailPath }}",
+        "options": {
+          "dataPropertyName": "data"
+        }
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [9520, 1100],
+      "id": "a1b2c3d4-0001-4aaa-8aaa-000000000018",
+      "name": "Read thumbnail file"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://www.googleapis.com/upload/youtube/v3/thumbnails/set?videoId={{ $('Upload video to YouTube').item.json.id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "youTubeOAuth2Api",
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [9744, 1100],
+      "id": "a1b2c3d4-0001-4aaa-8aaa-000000000019",
+      "name": "Set thumbnail on YouTube video",
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "REPLACE_WITH_YOUR_YOUTUBE_CREDENTIAL_ID",
+          "name": "YouTube account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [[{ "node": "HTTP Request", "type": "main", "index": 0 }]]
+    },
+    "HTTP Request": {
+      "main": [[{ "node": "HTML", "type": "main", "index": 0 }]]
+    },
+    "HTML": {
+      "main": [[{ "node": "Aggregate", "type": "main", "index": 0 }]]
+    },
+    "Aggregate": {
+      "main": [[{ "node": "Split Out Headlines", "type": "main", "index": 0 }]]
+    },
+    "Split Out Headlines": {
+      "main": [[{ "node": "Limit To 1 Headline", "type": "main", "index": 0 }]]
+    },
+    "Limit To 1 Headline": {
+      "main": [[{ "node": "Generate Video ID", "type": "main", "index": 0 }]]
+    },
+    "Generate Video ID": {
+      "main": [[{ "node": "Research Agent", "type": "main", "index": 0 }]]
+    },
+    "Simple Memory": {
+      "ai_memory": [[{ "node": "Research Agent", "type": "ai_memory", "index": 0 }]]
+    },
+    "Ollama Chat Model (Research)": {
+      "ai_languageModel": [[{ "node": "Research Agent", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "Search in Tavily": {
+      "ai_tool": [[{ "node": "Research Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "Research Agent": {
+      "main": [[
+        { "node": "Screen Planner", "type": "main", "index": 0 },
+        { "node": "Save Video Metadata", "type": "main", "index": 0 }
+      ]]
+    },
+    "Ollama Chat Model (Planner)": {
+      "ai_languageModel": [[{ "node": "Screen Planner", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "Screen Planner": {
+      "main": [[{ "node": "normalize scene data", "type": "main", "index": 0 }]]
+    },
+    "normalize scene data": {
+      "main": [[{ "node": "Generate audio (Piper TTS)", "type": "main", "index": 0 }]]
+    },
+    "Generate audio (Piper TTS)": {
+      "main": [[{ "node": "attach audio to scene", "type": "main", "index": 0 }]]
+    },
+    "attach audio to scene": {
+      "main": [[{ "node": "Reset Scene Store", "type": "main", "index": 0 }]]
+    },
+    "Reset Scene Store": {
+      "main": [[{ "node": "Loop Over Scenes", "type": "main", "index": 0 }]]
+    },
+    "Loop Over Scenes": {
+      "main": [
+        [{ "node": "prepare storyboard.json", "type": "main", "index": 0 }],
+        [{ "node": "build comfyui payload", "type": "main", "index": 0 }]
+      ]
+    },
+    "build comfyui payload": {
+      "main": [[{ "node": "Queue ComfyUI prompt", "type": "main", "index": 0 }]]
+    },
+    "Queue ComfyUI prompt": {
+      "main": [[{ "node": "Wait for image render", "type": "main", "index": 0 }]]
+    },
+    "Wait for image render": {
+      "main": [[{ "node": "Get ComfyUI history", "type": "main", "index": 0 }]]
+    },
+    "Get ComfyUI history": {
+      "main": [[{ "node": "extract image info", "type": "main", "index": 0 }]]
+    },
+    "extract image info": {
+      "main": [[{ "node": "Fetch image from ComfyUI", "type": "main", "index": 0 }]]
+    },
+    "Fetch image from ComfyUI": {
+      "main": [[{ "node": "finalize scene assets", "type": "main", "index": 0 }]]
+    },
+    "finalize scene assets": {
+      "main": [[{ "node": "Write audio file", "type": "main", "index": 0 }]]
+    },
+    "Write audio file": {
+      "main": [[{ "node": "Write image file", "type": "main", "index": 0 }]]
+    },
+    "Write image file": {
+      "main": [[{ "node": "Loop Over Scenes", "type": "main", "index": 0 }]]
+    },
+    "prepare storyboard.json": {
+      "main": [[{ "node": "Write storyboard.json", "type": "main", "index": 0 }]]
+    },
+    "Write storyboard.json": {
+      "main": [[
+        { "node": "Build ffmpeg render script", "type": "main", "index": 0 },
+        { "node": "Build thumbnail prompt", "type": "main", "index": 0 }
+      ]]
+    },
+    "Build ffmpeg render script": {
+      "main": [[{ "node": "Write render script", "type": "main", "index": 0 }]]
+    },
+    "Write render script": {
+      "main": [[{ "node": "Render video with ffmpeg", "type": "main", "index": 0 }]]
+    },
+    "Render video with ffmpeg": {
+      "main": [[{ "node": "Attach video path", "type": "main", "index": 0 }]]
+    },
+    "Attach video path": {
+      "main": [[{ "node": "Merge video and thumbnail", "type": "main", "index": 0 }]]
+    },
+    "Build thumbnail prompt": {
+      "main": [[{ "node": "Queue ComfyUI thumbnail", "type": "main", "index": 0 }]]
+    },
+    "Queue ComfyUI thumbnail": {
+      "main": [[{ "node": "Wait for thumbnail render", "type": "main", "index": 0 }]]
+    },
+    "Wait for thumbnail render": {
+      "main": [[{ "node": "Get ComfyUI thumbnail history", "type": "main", "index": 0 }]]
+    },
+    "Get ComfyUI thumbnail history": {
+      "main": [[{ "node": "Extract thumbnail info", "type": "main", "index": 0 }]]
+    },
+    "Extract thumbnail info": {
+      "main": [[{ "node": "Fetch thumbnail image", "type": "main", "index": 0 }]]
+    },
+    "Fetch thumbnail image": {
+      "main": [[{ "node": "Write thumbnail file", "type": "main", "index": 0 }]]
+    },
+    "Write thumbnail file": {
+      "main": [[{ "node": "Merge video and thumbnail", "type": "main", "index": 1 }]]
+    },
+    "Merge video and thumbnail": {
+      "main": [[{ "node": "Prepare YouTube metadata", "type": "main", "index": 0 }]]
+    },
+    "Prepare YouTube metadata": {
+      "main": [[{ "node": "Read final video file", "type": "main", "index": 0 }]]
+    },
+    "Read final video file": {
+      "main": [[{ "node": "Upload video to YouTube", "type": "main", "index": 0 }]]
+    },
+    "Upload video to YouTube": {
+      "main": [[{ "node": "Read thumbnail file", "type": "main", "index": 0 }]]
+    },
+    "Read thumbnail file": {
+      "main": [[{ "node": "Set thumbnail on YouTube video", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f820868f59015112916cb180789f95ffb136cb3e701323e49dc86220f1b1040d"
+  }
+}

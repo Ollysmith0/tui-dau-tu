@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+.tmp_*
+tiktok_tokens.json
+
+# Large model assets / weights - not code, don't belong in this repo
+lightspeed_assets/
+*.onnx
