@@ -13,8 +13,8 @@
         -320,
         4820
       ],
-      "id": "53f0db4e-75fd-43f4-af53-ea1107b46ccf",
-      "name": "Note af84075f"
+      "id": "72883c67-dda2-4d9d-a058-dfe1fb64eb39",
+      "name": "Note ecae0f81"
     },
     {
       "parameters": {
@@ -32,7 +32,7 @@
         -96,
         5160
       ],
-      "id": "3f1cd7a6-14a9-4aca-9b1f-bba7b0659ee9",
+      "id": "3363d6aa-7923-4b33-8069-b2159218bb94",
       "name": "Schedule Trigger"
     },
     {
@@ -45,7 +45,7 @@
         128,
         5160
       ],
-      "id": "058b45c1-d212-4ce9-9e45-f8da78ca6ee8",
+      "id": "5d310036-9840-46f7-b999-ac2acc799547",
       "name": "Load Config"
     },
     {
@@ -58,7 +58,7 @@
         352,
         5160
       ],
-      "id": "611f4575-bb63-43f7-b248-8c64ef8ebe15",
+      "id": "85e369ea-966a-42e4-b579-c30ec4217aa5",
       "name": "Build Topics Query"
     },
     {
@@ -80,7 +80,7 @@
         576,
         5160
       ],
-      "id": "428a371d-c3aa-4113-97c0-faf84572728d",
+      "id": "25833934-7b91-4608-bcef-45860f095df5",
       "name": "Tavily Search (Topics)",
       "credentials": {
         "tavilyApi": {
@@ -99,7 +99,7 @@
         800,
         5160
       ],
-      "id": "039a87af-fc92-4348-8f33-85d5fa987596",
+      "id": "eb37d2ac-b76e-4f4c-9f7b-d08f962f5ffd",
       "name": "Parse Topics Results"
     },
     {
@@ -115,7 +115,7 @@
         1024,
         5384
       ],
-      "id": "67ee515e-d5ca-4504-b8df-d7233107487a",
+      "id": "a5ad5b3e-4fde-406c-9612-a4149d3a28cc",
       "name": "Ollama Chat Model (Topics)",
       "credentials": {
         "ollamaApi": {
@@ -136,7 +136,7 @@
         1248,
         5160
       ],
-      "id": "ec4f9c35-df56-4430-b086-a7861aa155a1",
+      "id": "13d61b0c-e88d-4afe-a5e1-86e0edebc8be",
       "name": "Pick Daily Topics Agent"
     },
     {
@@ -149,7 +149,7 @@
         1472,
         5160
       ],
-      "id": "f1a64f6f-bc98-4a7d-a8e7-7eb8af049a53",
+      "id": "4b79c8a9-cf1f-49d3-b33e-a56987c32838",
       "name": "Parse & Split Topics"
     },
     {
@@ -162,7 +162,7 @@
         1696,
         5160
       ],
-      "id": "a301a0e5-20e4-4c2c-9e56-759d48171a72",
+      "id": "51ca0427-ed8c-43c3-9c11-00a6a92e4db6",
       "name": "Loop Over Headlines"
     },
     {
@@ -178,8 +178,8 @@
         1920,
         4820
       ],
-      "id": "0ad3af17-7bba-4745-9c85-76e0feb3b213",
-      "name": "Note 72672ee1"
+      "id": "84bd7d1c-38ce-4e3d-994d-b687182cd478",
+      "name": "Note 642610cb"
     },
     {
       "parameters": {
@@ -192,7 +192,7 @@
         1976,
         5160
       ],
-      "id": "5cc4b1d7-0bb9-498b-a34a-2b3da7dfad6b",
+      "id": "5b5cda1e-f86f-475b-beda-af0b707a2c7f",
       "name": "Generate Video ID"
     },
     {
@@ -205,7 +205,7 @@
         2200,
         5160
       ],
-      "id": "fa352969-27be-4a74-9a1e-dec40b810a84",
+      "id": "fa2c3819-dc00-4aed-bdef-1bccca409974",
       "name": "Init Paths"
     },
     {
@@ -218,7 +218,7 @@
         2424,
         5160
       ],
-      "id": "5aa2ee2b-755a-48cf-ba5b-378354754d70",
+      "id": "1c6f2aa9-7ebe-44f0-90bd-7f8ac38fce98",
       "name": "Reset Scene Store"
     },
     {
@@ -233,7 +233,7 @@
         2872,
         5384
       ],
-      "id": "6e2f06ba-a6a3-42de-a567-ca0519e02b73",
+      "id": "042f921a-4c33-4289-87cc-0bc2446d1fe8",
       "name": "Simple Memory"
     },
     {
@@ -249,7 +249,7 @@
         2744,
         5384
       ],
-      "id": "0f5eae16-f8cd-49fd-89dd-8522c8734ce4",
+      "id": "61e4db79-4ce9-4de3-947c-252f878b36e3",
       "name": "Ollama Chat Model (Research)",
       "credentials": {
         "ollamaApi": {
@@ -269,7 +269,7 @@
         2996,
         5384
       ],
-      "id": "d3263d4a-da0b-4d4b-a0ca-dbe2750144ff",
+      "id": "e9803d58-588b-4828-8255-4f5ff10527b1",
       "name": "Search in Tavily",
       "credentials": {
         "tavilyApi": {
@@ -290,7 +290,7 @@
         2872,
         5160
       ],
-      "id": "3d3384ea-39bc-4a06-9503-b8e0ee749896",
+      "id": "a8fcf55f-3a79-48fb-947b-4b508678be6f",
       "name": "Research Agent"
     },
     {
@@ -306,7 +306,7 @@
         3352,
         5040
       ],
-      "id": "3e227f13-eab4-4932-9aac-a910fcd99fab",
+      "id": "d3b6c94b-da34-4e33-822f-6b141744d9ea",
       "name": "Ollama Chat Model (Planner)",
       "credentials": {
         "ollamaApi": {
@@ -327,7 +327,7 @@
         3352,
         5160
       ],
-      "id": "4b379133-997e-4574-8fce-d70c1685a0ff",
+      "id": "be1c7125-665f-46b5-b995-86785dd28b36",
       "name": "Screen Planner"
     },
     {
@@ -340,7 +340,7 @@
         3800,
         5160
       ],
-      "id": "d31b24c5-bcd2-46f0-aad6-5d04a3369c8e",
+      "id": "42584328-edea-4ffc-82cb-8edd58647eaf",
       "name": "normalize scene data"
     },
     {
@@ -365,7 +365,7 @@
         4024,
         5160
       ],
-      "id": "a1a16d42-1a43-4652-a4a6-8b7ebff9c1aa",
+      "id": "092962f2-0e95-40c6-9e5b-eb0f966aa956",
       "name": "Generate audio (vietTTS)"
     },
     {
@@ -378,7 +378,7 @@
         4248,
         5160
       ],
-      "id": "bb45df23-c3b5-44a1-8a4b-8e3059608a66",
+      "id": "b37d291f-3b86-4391-88b1-dd0e2738d047",
       "name": "attach audio to scene"
     },
     {
@@ -391,7 +391,7 @@
         4472,
         5160
       ],
-      "id": "dc13aee3-57e7-462e-8e83-e786fdac20c8",
+      "id": "57731a43-008a-42d6-8c99-25ffffaa42fd",
       "name": "Loop Over Scenes"
     },
     {
@@ -405,7 +405,7 @@
         4696,
         4872
       ],
-      "id": "76b79be1-2589-4dc8-9dfc-8ca61ae8b75c",
+      "id": "bd76df70-1738-4a89-8127-cad2c5bc9b15",
       "name": "Build Image Queries"
     },
     {
@@ -421,7 +421,7 @@
         4920,
         4872
       ],
-      "id": "c97c8510-3411-4bc7-ae76-7fdc14bc0d92",
+      "id": "b4678bf1-07c6-4c4f-8032-bf7592c47cad",
       "name": "Write audio file"
     },
     {
@@ -443,7 +443,7 @@
         5144,
         4872
       ],
-      "id": "5b755237-220d-45dd-97b7-6757bb61e3a5",
+      "id": "cac842ca-9fe8-4ad9-a5fe-7590cbe89c35",
       "name": "Tavily Image Search",
       "credentials": {
         "tavilyApi": {
@@ -462,7 +462,7 @@
         5368,
         4872
       ],
-      "id": "26ae314c-56e8-499e-8701-a7ae92c9b458",
+      "id": "1be76385-61ee-447b-ad21-87a4bb152034",
       "name": "Check Tavily Images"
     },
     {
@@ -496,7 +496,7 @@
         5592,
         4872
       ],
-      "id": "2ac559fb-27f4-4e3f-ae7c-2f6f75f656ad",
+      "id": "7a8987f6-b2e5-4a59-a9c4-a889476a8e92",
       "name": "Has Tavily Image?"
     },
     {
@@ -518,7 +518,7 @@
         5816,
         4800
       ],
-      "id": "405491be-8030-438a-b44b-00df0ac1640f",
+      "id": "7541774c-2425-4170-bfcb-8fbcce1e6a09",
       "name": "Download Image (Tavily)",
       "onError": "continueRegularOutput"
     },
@@ -533,7 +533,7 @@
         6040,
         4800
       ],
-      "id": "324eae61-506b-49df-92ff-1e5777df48aa",
+      "id": "7fbb824a-915b-4551-8f2b-05b915350530",
       "name": "Validate Tavily Image"
     },
     {
@@ -567,7 +567,7 @@
         6264,
         4800
       ],
-      "id": "b6e7e0e8-4ad9-40ea-80c8-4385ff5e4890",
+      "id": "6b4af92d-58d5-4b90-8b14-29bc7660b4bf",
       "name": "Is Tavily Image Valid?"
     },
     {
@@ -585,7 +585,7 @@
         6488,
         4944
       ],
-      "id": "4971cdcc-5c03-4841-9fe2-43188af9a64b",
+      "id": "0dce5310-8ccb-4e79-a91c-38dcc4667817",
       "name": "Pexels Image Search",
       "credentials": {
         "httpHeaderAuth": {
@@ -605,7 +605,7 @@
         6712,
         4944
       ],
-      "id": "400440ab-da3f-4255-8bc0-fac0fe414aee",
+      "id": "a9aab09c-d52a-4a3a-bedd-8ce1ace5865f",
       "name": "Extract Pexels Image URL"
     },
     {
@@ -626,7 +626,7 @@
         6936,
         4944
       ],
-      "id": "f64beb3d-4a63-49ff-8931-5ff24b74e696",
+      "id": "b85ffb4e-21fd-453e-9b41-5bf8d0b32f19",
       "name": "Download Image (Pexels)"
     },
     {
@@ -640,7 +640,7 @@
         7160,
         4872
       ],
-      "id": "9d663d31-8942-48ae-8a22-c3464d769590",
+      "id": "96872d8c-5d0f-4ff3-b4c3-a8912fadf98e",
       "name": "Finalize Scene Image"
     },
     {
@@ -656,7 +656,7 @@
         7384,
         5040
       ],
-      "id": "8287a6c8-b5e6-4ad4-92ea-632356626459",
+      "id": "3dfb2dd2-b0e2-4e25-935c-5660167cf4a3",
       "name": "Write image file"
     },
     {
@@ -669,7 +669,7 @@
         4696,
         5160
       ],
-      "id": "4de536d4-3ca3-4a1b-a83a-7df9b93433c4",
+      "id": "253fd764-781a-4763-907c-476853ed6568",
       "name": "prepare storyboard.json"
     },
     {
@@ -685,7 +685,7 @@
         4920,
         5160
       ],
-      "id": "cc1c2440-d80b-4872-a354-010115503dab",
+      "id": "6afa657c-fa2b-4360-8de2-68a015052d69",
       "name": "Write storyboard.json"
     },
     {
@@ -698,7 +698,7 @@
         5144,
         5160
       ],
-      "id": "2fb2a6f1-a691-4ab5-9e6b-49cf2be31d88",
+      "id": "51dbede4-eaab-4de4-9d05-796eed15e833",
       "name": "Build Render Script"
     },
     {
@@ -714,7 +714,7 @@
         5368,
         5160
       ],
-      "id": "7b02a220-e8ff-4268-8816-f0adf160e7f1",
+      "id": "08fbb752-6226-4bb2-bd05-ed1adde71edc",
       "name": "Write Render Script"
     },
     {
@@ -727,7 +727,7 @@
         5592,
         5160
       ],
-      "id": "2dfcb179-8966-4f09-88ba-275cd95e218a",
+      "id": "3b5ad1c7-d993-4a42-8212-cea54c1392f1",
       "name": "Execute Render Script (ffmpeg)"
     },
     {
@@ -741,7 +741,7 @@
         2648,
         5456
       ],
-      "id": "2df276f6-95e2-46fa-84e2-c33ab580e4b2",
+      "id": "5aa4e3c2-bc0d-42bd-92d4-5436e07d16db",
       "name": "Build Thumbnail Image Query"
     },
     {
@@ -763,7 +763,7 @@
         2872,
         5456
       ],
-      "id": "42633bda-6518-4622-93f5-2df47947038b",
+      "id": "75d2fd6d-1b95-4199-b37e-d726fc27110b",
       "name": "Tavily Image Search (Thumbnail)",
       "credentials": {
         "tavilyApi": {
@@ -783,7 +783,7 @@
         3096,
         5456
       ],
-      "id": "7ce33edc-7111-4925-9280-d5aac49befb2",
+      "id": "157e7d83-d0f7-4f30-b1d4-69bfb2103d64",
       "name": "Check Tavily Images (Thumbnail)"
     },
     {
@@ -817,7 +817,7 @@
         3320,
         5456
       ],
-      "id": "1178be46-8a61-46aa-acc3-e2883e679f0e",
+      "id": "c2dfc1bd-94d0-4aa7-9789-4c8deaabcc41",
       "name": "Has Tavily Image? (Thumbnail)"
     },
     {
@@ -839,7 +839,7 @@
         3544,
         5384
       ],
-      "id": "95af0009-12a2-466c-a786-8688ba3274ce",
+      "id": "61a61f3c-dbe2-429f-86c1-364e7242e6d7",
       "name": "Download Thumbnail (Tavily)",
       "onError": "continueRegularOutput"
     },
@@ -854,7 +854,7 @@
         3768,
         5384
       ],
-      "id": "0b63905a-9a0d-4e3a-ac38-a978ab05260b",
+      "id": "c8cb1217-e4db-46b3-a3e8-7c834fa6a627",
       "name": "Validate Tavily Thumbnail"
     },
     {
@@ -888,7 +888,7 @@
         3992,
         5384
       ],
-      "id": "62f677f7-4319-48be-a74c-56688074c56a",
+      "id": "f8a88525-45e3-4851-9f68-db75aa340e48",
       "name": "Is Tavily Thumbnail Valid?"
     },
     {
@@ -906,7 +906,7 @@
         4216,
         5456
       ],
-      "id": "2433c1e6-a2a2-446d-a302-7a6541a9d182",
+      "id": "043757f9-7263-4e2a-8398-81362430df33",
       "name": "Pexels Image Search (Thumbnail)",
       "credentials": {
         "httpHeaderAuth": {
@@ -926,7 +926,7 @@
         4440,
         5456
       ],
-      "id": "91476c31-6287-4ddf-b499-468f8a0fadd8",
+      "id": "2947ffe1-e9b8-4746-a9f4-4e8e05f493b2",
       "name": "Extract Pexels Image URL (Thumbnail)"
     },
     {
@@ -947,7 +947,7 @@
         4664,
         5456
       ],
-      "id": "f0a3e70f-6113-4504-b327-4ebf7edf1817",
+      "id": "ce800a4b-aa70-467a-8576-03047dd2152e",
       "name": "Download Thumbnail (Pexels)"
     },
     {
@@ -962,7 +962,7 @@
         4888,
         5384
       ],
-      "id": "e114b269-c2f3-4723-8848-e18808759e8e",
+      "id": "2f4be7ba-e5a8-4843-b69b-d318df82d40d",
       "name": "Write Thumbnail Background"
     },
     {
@@ -977,7 +977,7 @@
         5816,
         5160
       ],
-      "id": "2092e650-2dfd-47b0-8024-8d77663e2a4d",
+      "id": "9e815584-67c7-4267-9aae-b82c3bb9c84c",
       "name": "Merge Video + Thumbnail"
     },
     {
@@ -990,7 +990,7 @@
         6040,
         5160
       ],
-      "id": "3d42daa2-b0b8-4d13-821c-7d5dde5880e5",
+      "id": "f9db2241-26af-4b56-b914-d7bd79b960a7",
       "name": "Prepare YouTube Metadata"
     },
     {
@@ -1004,7 +1004,7 @@
         6264,
         5160
       ],
-      "id": "c90eefcc-8b62-499d-a6d3-a249e8b223bc",
+      "id": "18469662-3fe4-4c3e-a241-6484c2af8352",
       "name": "Read Final Video File"
     },
     {
@@ -1026,7 +1026,7 @@
         6488,
         5160
       ],
-      "id": "7a29f6f7-008e-44ef-abfd-f95b85801c53",
+      "id": "9f07debc-f5da-4213-8fd3-63e11c7ca80b",
       "name": "Upload Video To YouTube",
       "credentials": {
         "youTubeOAuth2Api": {
@@ -1046,7 +1046,7 @@
         6712,
         5160
       ],
-      "id": "8c553c80-d044-4d7a-aebc-2d8637693687",
+      "id": "9b1fec0a-6302-4900-985a-ca39a85dd242",
       "name": "Read Thumbnail File"
     },
     {
@@ -1075,7 +1075,7 @@
         6936,
         5160
       ],
-      "id": "c3bd5a9d-13f1-42fe-8607-469950c375bd",
+      "id": "2b1a51e5-bca5-448b-9b1d-52961016ccc4",
       "name": "Set YouTube Thumbnail",
       "credentials": {
         "youTubeOAuth2Api": {
@@ -1086,7 +1086,7 @@
     },
     {
       "parameters": {
-        "content": "## DANG THEM FACEBOOK REELS + TIKTOK (2026-07-27)\n\nCa 2 nhanh nay chay SONG SONG voi nhanh YouTube (deu bat dau tu 'Prepare\nYouTube Metadata'), va deu dung onError=continueRegularOutput tren MOI\nnode - neu Facebook hoac TikTok loi (token het han, rate limit, v.v.) thi\nCHI nhanh do bi anh huong, KHONG lam crash ca video/ca ngay chay.\n\nFACEBOOK: can Page Access Token (dan vao FB_ACCESS_TOKEN trong Load\nConfig) + FB_PAGE_ID (da dien san). Luu y: token nguoi dung dan vao chat\nTRUOC DAY DA BI LO - PHAI xoay vong (rotate) token moi truoc khi dung.\n\nTIKTOK: client_key/client_secret KHONG du de dang video - TikTok bat\nbuoc phai co access_token/refresh_token cua NGUOI DUNG THAT qua man hinh\ndong y OAuth. Chay 1 LAN DUY NHAT script `tiktok_oauth_setup.py` (xem\nhuong dan chi tiet trong file do, can 1 URL redirect https - vi du qua\nngrok) de tao ra tiktok_tokens.json. Workflow se tu dong REFRESH token\ntruoc moi lan dang (khong can lam lai buoc OAuth thu cong nay nua tru\nkhi refresh_token het han sau 365 ngay). App unaudited -> chi dang duoc\nSELF_ONLY (rieng tu) - doi TIKTOK_PRIVACY_LEVEL trong Load Config sau khi\nTikTok duyet app de dang cong khai.",
+        "content": "## DANG THEM FACEBOOK REELS + TIKTOK (2026-07-27)\n\nCa 2 nhanh nay chay SONG SONG voi nhanh YouTube (deu bat dau tu 'Prepare\nYouTube Metadata'), va deu dung onError=continueRegularOutput tren MOI\nnode - neu Facebook hoac TikTok loi (token het han, rate limit, v.v.) thi\nCHI nhanh do bi anh huong, KHONG lam crash ca video/ca ngay chay.\n\nFACEBOOK: can Page Access Token (dan vao FB_ACCESS_TOKEN trong Load\nConfig) + FB_PAGE_ID (da dien san). Luu y: token nguoi dung dan vao chat\nTRUOC DAY DA BI LO - PHAI xoay vong (rotate) token moi truoc khi dung.\n\nTIKTOK: client_key/client_secret KHONG du de dang video - TikTok bat\nbuoc phai co access_token/refresh_token cua NGUOI DUNG THAT qua man hinh\ndong y OAuth. Chay 1 LAN DUY NHAT script `tiktok_oauth_setup.py` (dung\ntrang callback tinh docs/tiktok-callback.html tren GitHub Pages - khong\ncan ngrok/server local) de tao ra tiktok_tokens.json. Workflow se tu dong\nREFRESH token truoc moi lan dang (khong can lam lai buoc OAuth thu cong\nnay nua tru khi refresh_token het han sau 365 ngay). App unaudited -> chi\ndang duoc SELF_ONLY (rieng tu) - doi TIKTOK_PRIVACY_LEVEL trong Load\nConfig sau khi TikTok duyet app de dang cong khai.",
         "height": 380,
         "width": 560,
         "color": 4
@@ -1097,8 +1097,8 @@
         6040,
         4680
       ],
-      "id": "31fd9a3b-6f55-4eb3-9e2e-eec831bb7c67",
-      "name": "Note 6f259dfc"
+      "id": "b6df0393-e3bb-4ebb-bf76-fe4052dcb3f2",
+      "name": "Note dbf3419c"
     },
     {
       "parameters": {
@@ -1117,7 +1117,7 @@
         6264,
         5400
       ],
-      "id": "f3c4ada3-20fa-4d7d-8704-f75b74540a68",
+      "id": "c5f35f96-2657-4c09-9dfb-da4cb6472f2e",
       "name": "FB: Start Upload",
       "onError": "continueRegularOutput"
     },
@@ -1132,7 +1132,7 @@
         6488,
         5400
       ],
-      "id": "050dd80e-4978-402e-81df-00a545a3c631",
+      "id": "894325cb-ff35-44d5-a293-56a341fda291",
       "name": "FB: Read Video File",
       "onError": "continueRegularOutput"
     },
@@ -1170,7 +1170,7 @@
         6712,
         5400
       ],
-      "id": "e3aa8830-9a37-42db-b02d-ed37e46de451",
+      "id": "d5701dc3-6067-4bfa-b074-f39ca1d8f9ec",
       "name": "FB: Upload Video",
       "onError": "continueRegularOutput"
     },
@@ -1213,7 +1213,7 @@
         6936,
         5400
       ],
-      "id": "2d635655-4fe7-4493-aabf-43406e9439aa",
+      "id": "d8d241a3-0291-4aff-849d-4c4f42c66c55",
       "name": "FB: Publish Reel",
       "onError": "continueRegularOutput"
     },
@@ -1227,7 +1227,7 @@
         6264,
         5640
       ],
-      "id": "9f14a3f6-53d2-4dce-a142-280d117861a3",
+      "id": "ca5b1770-a88e-405a-b0a0-38d49bc6c2d7",
       "name": "TikTok: Load Tokens",
       "onError": "continueRegularOutput"
     },
@@ -1267,7 +1267,7 @@
         6488,
         5640
       ],
-      "id": "1a4287b0-cf09-4db9-bf12-078fb2b702a9",
+      "id": "d2807355-cd82-48c0-837e-d83c94488063",
       "name": "TikTok: Refresh Token",
       "onError": "continueRegularOutput"
     },
@@ -1281,7 +1281,7 @@
         6712,
         5640
       ],
-      "id": "b9846999-297a-4ef6-b094-909e9a0167a4",
+      "id": "fc72d903-a0c7-4aaf-a6e9-d1d028773cb6",
       "name": "TikTok: Save New Tokens",
       "onError": "continueRegularOutput"
     },
@@ -1295,7 +1295,7 @@
         6936,
         5640
       ],
-      "id": "0963a0a2-dcd1-4c5b-9860-604bca9f00d1",
+      "id": "2a52f537-a4ac-4f8b-9b84-7bf664d2d7bd",
       "name": "TikTok: Prepare Upload Info",
       "onError": "continueRegularOutput"
     },
@@ -1329,7 +1329,7 @@
         7160,
         5640
       ],
-      "id": "49cf2b31-c3cf-4371-b707-3ea826d6f533",
+      "id": "4e042bfd-3c5f-4dac-9aee-4e60d1cf809b",
       "name": "TikTok: Init Upload",
       "onError": "continueRegularOutput"
     },
@@ -1344,7 +1344,7 @@
         7384,
         5640
       ],
-      "id": "2c107cab-3db6-4de5-9964-5efcd713038d",
+      "id": "dc2a2416-d410-4da6-9e84-9f5862579fa6",
       "name": "TikTok: Read Video File",
       "onError": "continueRegularOutput"
     },
@@ -1382,7 +1382,7 @@
         7608,
         5640
       ],
-      "id": "ab24e958-2879-4d98-8221-2ce7751d9746",
+      "id": "cacd1319-f85f-423f-80ba-9c946bb0bd2d",
       "name": "TikTok: Upload Video",
       "onError": "continueRegularOutput"
     },
@@ -1416,7 +1416,7 @@
         7832,
         5640
       ],
-      "id": "756e370e-73be-4b1a-8ce8-4d721bbe7a72",
+      "id": "4ecaf351-d058-46ac-abee-0a96180720d2",
       "name": "TikTok: Check Status",
       "onError": "continueRegularOutput"
     },
@@ -1433,7 +1433,7 @@
         8056,
         5160
       ],
-      "id": "d780b807-d716-4a62-aa55-6d305e0cc2cb",
+      "id": "49e790a5-b5a8-4d04-bf50-fc971ec11cdf",
       "name": "Merge Social Uploads"
     }
   ],

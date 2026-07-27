@@ -1512,13 +1512,13 @@ wf.sticky(
     "TRUOC DAY DA BI LO - PHAI xoay vong (rotate) token moi truoc khi dung.\n\n"
     "TIKTOK: client_key/client_secret KHONG du de dang video - TikTok bat\n"
     "buoc phai co access_token/refresh_token cua NGUOI DUNG THAT qua man hinh\n"
-    "dong y OAuth. Chay 1 LAN DUY NHAT script `tiktok_oauth_setup.py` (xem\n"
-    "huong dan chi tiet trong file do, can 1 URL redirect https - vi du qua\n"
-    "ngrok) de tao ra tiktok_tokens.json. Workflow se tu dong REFRESH token\n"
-    "truoc moi lan dang (khong can lam lai buoc OAuth thu cong nay nua tru\n"
-    "khi refresh_token het han sau 365 ngay). App unaudited -> chi dang duoc\n"
-    "SELF_ONLY (rieng tu) - doi TIKTOK_PRIVACY_LEVEL trong Load Config sau khi\n"
-    "TikTok duyet app de dang cong khai.",
+    "dong y OAuth. Chay 1 LAN DUY NHAT script `tiktok_oauth_setup.py` (dung\n"
+    "trang callback tinh docs/tiktok-callback.html tren GitHub Pages - khong\n"
+    "can ngrok/server local) de tao ra tiktok_tokens.json. Workflow se tu dong\n"
+    "REFRESH token truoc moi lan dang (khong can lam lai buoc OAuth thu cong\n"
+    "nay nua tru khi refresh_token het han sau 365 ngay). App unaudited -> chi\n"
+    "dang duoc SELF_ONLY (rieng tu) - doi TIKTOK_PRIVACY_LEVEL trong Load\n"
+    "Config sau khi TikTok duyet app de dang cong khai.",
     6040, Y_MAIN - 480, w=560, h=380,
 )
 
