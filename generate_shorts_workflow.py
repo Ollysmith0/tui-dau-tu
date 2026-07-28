@@ -40,6 +40,19 @@ Changes vs the previous live workflow (per user feedback 2026-07-27):
    ffprobe-measured audio duration used to render that scene, accumulated
    across scenes) and burns it into the final encode via the `subtitles`
    filter chained after the concat filter.
+7. (2026-07-28) Per user feedback: no more static images + Ken Burns zoom for
+   scene backgrounds - each scene now uses a short Pexels VIDEO clip (free
+   tier), looped/trimmed via ffmpeg `-stream_loop -1` + `-t` to match the
+   scene's real audio duration. All Tavily/Pexels IMAGE search nodes for
+   scenes were removed (Tavily image search dropped entirely for scenes;
+   thumbnail image search is untouched since YouTube thumbnails must stay a
+   static image). Captions were reworked from one full-sentence line per
+   scene to short karaoke-style chunks (~4 words on screen at a time, big
+   font) with the currently-spoken word highlighted yellow - built by a new
+   "Build Subtitles (ASS)" Code node (word timing estimated proportionally
+   by character length within the real ffprobe audio duration, since vietTTS
+   has no word-level timestamps) instead of being generated inline inside
+   the bash script.
 
 NOTE on agent design: the Topic Picker uses the deterministic
 "Code (build query) -> httpRequest (direct Tavily call) -> Code (digest) ->
@@ -523,19 +536,13 @@ wf.node(
             "8-12 giay. Hook phai xuat hien ngay trong 3 giay dau tien. Bo hoan toan phan chao "
             "hoi dai dong, di thang vao noi dung. Narration phai cuon hut, nhip nhanh, cau "
             "ngan - giong nguoi chia se that su, KHONG doc bao cao kho khan.\n\n"
-            "QUAN TRONG - MOI SCENE DUNG ANH THAT tai ve tu Tavily (uu tien, anh gan dung su "
-            "kien/nhan vat/khai niem that) hoac Pexels (anh stock du phong).\n\n"
+            "QUAN TRONG - MOI SCENE se duoc minh hoa bang 1 DOAN VIDEO CLIP NGAN tai ve tu "
+            "Pexels (video, tai khoan free) - KHONG con dung anh tinh + zoom nua.\n\n"
             "Voi MOI scene, ban phai cung cap:\n"
-            "- \"camera\": BAT BUOC chon 1 trong cac gia tri sau va KHONG BAO GIO de trong hay "
-            "dung 'static': slow-zoom, push-in, pull-out, pan-left, pan-right, parallax. Moi "
-            "scene PHAI co chuyen dong zoom/pan ro rang, khong duoc dung hinh tinh.\n"
-            "- asset gom 2 query:\n"
-            "  + \"event_query\": tu khoa tim ANH THAT PHAI mo ta CHINH XAC dieu dang duoc "
-            "narration cua SCENE NAY nhac toi (ten nguoi/su kien/khai niem/hanh dong cu the "
-            "- KHONG duoc chung chung khong lien quan). Dung cho Tavily.\n"
-            "  + \"stock_query\": mo ta tieng Anh chung chung kieu anh stock lien quan chu de "
-            "cua scene (VD voi tam_ly: 'person reflecting quietly at window'; voi dau_tu: "
-            "'stock exchange trading floor') de du phong tren Pexels.\n\n"
+            "- asset: { \"stock_query\": \"\" } - mo ta tieng Anh NGAN GON, cu the ve HANH "
+            "DONG/KHUNG CANH dang dien ra khop voi noi dung narration cua SCENE NAY (vi du "
+            "voi tam_ly: 'woman journaling quietly at night'; voi dau_tu: 'stock market chart "
+            "rising on screen') de tim VIDEO CLIP ngan phu hop tren Pexels.\n\n"
             "INPUT (JSON tu Research Agent):\n"
             "{{ $json.output }}\n\n"
             "Return ONLY JSON theo dung schema sau, khong markdown, khong giai thich, khong "
@@ -548,9 +555,9 @@ wf.node(
             '  "scenes": [\n'
             "    {\n"
             '      "scene_type": "", "headline": "", "narration": "", "duration": 10,\n'
-            '      "camera": "", "animation": "", "transition": "", "subtitle_style": "",\n'
+            '      "animation": "", "transition": "", "subtitle_style": "",\n'
             '      "highlight_words": [], "importance": "medium",\n'
-            '      "asset": { "event_query": "", "stock_query": "" }\n'
+            '      "asset": { "stock_query": "" }\n'
             "    }\n"
             "  ]\n"
             "}"
@@ -613,8 +620,7 @@ wf.node(
             "      theme: data.theme,\n"
             "      aspect_ratio: data.aspect_ratio,\n"
             "      fps: data.fps,\n"
-            "      ...scene,\n"
-            "      camera: (scene.camera && scene.camera !== 'static') ? scene.camera : 'slow-zoom'\n"
+            "      ...scene\n"
             "    }\n"
             "  }));\n"
             "});"
@@ -675,7 +681,7 @@ wf.node(
 )
 
 wf.node(
-    "Build Image Queries",
+    "Build Video Queries",
     "n8n-nodes-base.code",
     {
         "mode": "runOnceForEachItem",
@@ -684,12 +690,11 @@ wf.node(
             "const videoDir = $('Init Paths').first().json.videoDir;\n"
             "const sceneId = scene.sceneId;\n\n"
             "const audioPath = `${videoDir}/scene_${sceneId}_audio.wav`;\n"
-            "const imagePath = `${videoDir}/scene_${sceneId}_image.jpg`;\n\n"
-            "const eventQuery = (scene.asset && scene.asset.event_query) || scene.headline || (scene.narration || '').slice(0, 80);\n"
+            "const videoPath = `${videoDir}/scene_${sceneId}_video.mp4`;\n\n"
             "const stockQuery = (scene.asset && scene.asset.stock_query) || "
             "($('Generate Video ID').first().json.niche === 'tam_ly' ? 'calm lifestyle emotion background' : 'financial news background');\n\n"
             "return {\n"
-            "  json: { ...scene, audioPath, imagePath, eventQuery, stockQuery },\n"
+            "  json: { ...scene, audioPath, videoPath, stockQuery },\n"
             "  binary: $input.item.binary\n"
             "};"
         )
@@ -705,213 +710,65 @@ wf.node(
 )
 
 wf.node(
-    "Tavily Image Search",
+    "Pexels Video Search",
     "n8n-nodes-base.httpRequest",
     {
-        "method": "POST",
-        "url": "https://api.tavily.com/search",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "tavilyApi",
-        "sendBody": True,
-        "specifyBody": "json",
-        "jsonBody": (
-            "={{ JSON.stringify({ query: $('Build Image Queries').first().json.eventQuery, "
-            "search_depth: 'basic', include_images: true, include_image_descriptions: false, max_results: 3 }) }}"
-        ),
+        "url": "=https://api.pexels.com/videos/search?query={{ encodeURIComponent($json.stockQuery) }}&orientation=portrait&per_page=5&size=medium",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
         "options": {"timeout": 30000},
     },
     5144, Y_MAIN - 288,
     type_version=4.4,
-    extra={"credentials": TAVILY_CRED},
+    extra={"credentials": PEXELS_CRED},
 )
 
 wf.node(
-    "Check Tavily Images",
+    "Extract Pexels Video URL",
     "n8n-nodes-base.code",
     {
+        "mode": "runOnceForEachItem",
         "jsCode": (
-            "const bad = (url) => {\n"
-            "  if (!url) return true;\n"
-            "  url = url.toLowerCase();\n"
-            "  return (\n"
-            "    url.endsWith('.svg') ||\n"
-            "    url.includes('.svg?') ||\n"
-            "    url.includes('logo') ||\n"
-            "    url.includes('icon') ||\n"
-            "    url.includes('favicon') ||\n"
-            "    url.includes('lookaside.instagram') ||\n"
-            "    url.includes('instagram.com')\n"
-            "  );\n"
-            "};\n\n"
-            "let imageUrl = null;\n\n"
-            "if (Array.isArray($json.results)) {\n"
-            "  for (const result of $json.results) {\n"
-            "    if (!Array.isArray(result.images)) continue;\n"
-            "    imageUrl = result.images.find(u => !bad(u));\n"
-            "    if (imageUrl) break;\n"
-            "  }\n"
+            "const scene = $('Build Video Queries').first().json;\n"
+            "const videos = $json.videos || [];\n\n"
+            "// Uu tien video huong DOC (height > width) - Pexels orientation=portrait doi\n"
+            "// khi van tra ve vai video ngang, bo qua neu con lua chon khac.\n"
+            "const portraitVideos = videos.filter(v => (v.height || 0) > (v.width || 0));\n"
+            "const pool = portraitVideos.length ? portraitVideos : videos;\n"
+            "const video = pool[0];\n\n"
+            "if (!video) {\n"
+            "  throw new Error('Pexels khong tra ve video nao cho query: ' + (scene.stockQuery || ''));\n"
             "}\n\n"
-            "if (!imageUrl && Array.isArray($json.images)) {\n"
-            "  imageUrl = $json.images.find(u => !bad(u));\n"
+            "const files = (video.video_files || []).slice().sort((a, b) => (b.width * b.height) - (a.width * a.height));\n"
+            "const portraitFiles = files.filter(f => (f.height || 0) > (f.width || 0));\n"
+            "const filePool = portraitFiles.length ? portraitFiles : files;\n"
+            "// Uu tien file do phan giai vua phai (<=1080p ngang) de tai nhanh, khong can 4K.\n"
+            "const chosen = filePool.find(f => (f.width || 0) <= 1080 && (f.width || 0) > 0) || filePool[0];\n"
+            "const videoUrl = chosen && chosen.link;\n\n"
+            "if (!videoUrl) {\n"
+            "  throw new Error('Pexels tra ve video nhung khong co video_files hop le cho query: ' + (scene.stockQuery || ''));\n"
             "}\n\n"
-            "const scene = $('Build Image Queries').first().json;\n\n"
-            "return {\n"
-            "  json: { ...scene, hasTavilyImage: !!imageUrl, tavilyImageUrl: imageUrl }\n"
-            "};"
+            "return { json: { ...scene, pexelsVideoUrl: videoUrl } };"
         )
     },
     5368, Y_MAIN - 288, type_version=2,
 )
 
 wf.node(
-    "Has Tavily Image?",
-    "n8n-nodes-base.if",
-    {
-        "conditions": {
-            "options": {"caseSensitive": True, "leftValue": "", "typeValidation": "strict", "version": 3},
-            "conditions": [
-                {"id": "cond1", "leftValue": "={{ $json.hasTavilyImage }}", "rightValue": "", "operator": {"type": "boolean", "operation": "true", "singleValue": True}}
-            ],
-            "combinator": "and",
-        },
-        "options": {},
-    },
-    5592, Y_MAIN - 288, type_version=2.3,
-)
-
-wf.node(
-    "Download Image (Tavily)",
+    "Download Pexels Video",
     "n8n-nodes-base.httpRequest",
-    {"url": "={{ $json.tavilyImageUrl }}", "options": {"response": {"response": {"neverError": True, "responseFormat": "file"}}, "timeout": 12000}},
-    5816, Y_MAIN - 360,
-    type_version=4.4,
-    # FIX (workflow bi crash toan bo vi ECONNABORTED/timeout khi tai anh Tavily tu
-    # mot CDN cham/chet - neverError CHI bat loi HTTP status (4xx/5xx), KHONG bat
-    # duoc loi ket noi/timeout o tang thap hon). onError=continueRegularOutput de
-    # item van di tiep (khong co binary) thay vi lam dung ca pipeline; Validate
-    # Tavily Image ben duoi da tu coi khong co binary la anh khong hop le, kich
-    # hoat fallback Pexels nhu binh thuong.
-    extra={"onError": "continueRegularOutput"},
-)
-
-wf.node(
-    "Validate Tavily Image",
-    "n8n-nodes-base.code",
-    {
-        "mode": "runOnceForEachItem",
-        "jsCode": (
-            "function getImageDimensions(buf) {\n"
-            "  // JPEG: scan markers for a Start-Of-Frame segment (SOF0-3) which holds height/width.\n"
-            "  if (buf.length > 4 && buf[0] === 0xFF && buf[1] === 0xD8) {\n"
-            "    let offset = 2;\n"
-            "    while (offset + 9 < buf.length) {\n"
-            "      if (buf[offset] !== 0xFF) { offset++; continue; }\n"
-            "      const marker = buf[offset + 1];\n"
-            "      if (marker >= 0xC0 && marker <= 0xC3) {\n"
-            "        return { width: buf.readUInt16BE(offset + 7), height: buf.readUInt16BE(offset + 5) };\n"
-            "      }\n"
-            "      const segLength = buf.readUInt16BE(offset + 2);\n"
-            "      offset += 2 + segLength;\n"
-            "    }\n"
-            "    return null;\n"
-            "  }\n"
-            "  // PNG: IHDR chunk is always the first chunk, right after the 8-byte signature.\n"
-            "  if (buf.length > 24 && buf[0] === 0x89 && buf[1] === 0x50) {\n"
-            "    return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };\n"
-            "  }\n"
-            "  return null; // WEBP dimension parsing not implemented - skip the resolution check for it.\n"
-            "}\n\n"
-            "const MIN_DIMENSION = 720; // yeu cau anh that >=720p (theo chieu nho hon)\n\n"
-            "// Lay scene tu node 'Check Tavily Images' (KHONG phai $input.item.json) vi\n"
-            "// Download Image (Tavily) co the that bai (timeout/mat ket noi) va van tiep\n"
-            "// tuc chay (onError=continueRegularOutput) voi json bi thay the (vd {error}),\n"
-            "// lam mat het cac field scene that su (sceneId, imagePath, stockQuery,...).\n"
-            "const scene = $('Check Tavily Images').first().json;\n"
-            "const binary = $input.item.binary && $input.item.binary.data;\n"
-            "let isValid = false;\n\n"
-            "if (binary) {\n"
-            "  const buffer = await this.helpers.getBinaryDataBuffer(0, 'data');\n"
-            "  const isJpeg = buffer.length > 4 && buffer[0] === 0xFF && buffer[1] === 0xD8;\n"
-            "  const isPng = buffer.length > 8 && buffer[0] === 0x89 && buffer[1] === 0x50;\n"
-            "  const isWebp = buffer.length > 12 && buffer.slice(8, 12).toString() === 'WEBP';\n"
-            "  const dims = getImageDimensions(buffer);\n"
-            "  const meetsResolution = isWebp ? true : (dims ? Math.min(dims.width, dims.height) >= MIN_DIMENSION : false);\n"
-            "  isValid = buffer.length > 2000 && (isJpeg || isPng || isWebp) && meetsResolution;\n"
-            "}\n\n"
-            "return { json: { ...scene, tavilyImageValid: isValid }, binary: $input.item.binary };"
-        )
-    },
-    6040, Y_MAIN - 360, type_version=2,
-)
-
-wf.node(
-    "Is Tavily Image Valid?",
-    "n8n-nodes-base.if",
-    {
-        "conditions": {
-            "options": {"caseSensitive": True, "leftValue": "", "typeValidation": "strict", "version": 3},
-            "conditions": [
-                {"id": "5008f102-b4dd-4da4-b2ad-e993463b4f8a", "leftValue": "={{ $json.tavilyImageValid }}", "rightValue": "", "operator": {"type": "boolean", "operation": "true", "singleValue": True}}
-            ],
-            "combinator": "and",
-        },
-        "options": {},
-    },
-    6264, Y_MAIN - 360, type_version=2.3,
-)
-
-wf.node(
-    "Pexels Image Search",
-    "n8n-nodes-base.httpRequest",
-    {
-        "url": "=https://api.pexels.com/v1/search?query={{ encodeURIComponent($json.stockQuery) }}&orientation=portrait&per_page=5&size=large",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "options": {"timeout": 30000},
-    },
-    6488, Y_MAIN - 216,
-    type_version=4.4,
-    extra={"credentials": PEXELS_CRED},
-)
-
-wf.node(
-    "Extract Pexels Image URL",
-    "n8n-nodes-base.code",
-    {
-        "mode": "runOnceForEachItem",
-        "jsCode": (
-            "const MIN_DIMENSION = 720;\n"
-            "const photos = $json.photos || [];\n"
-            "// uu tien anh >=720p (Pexels tra ve width/height that trong response);\n"
-            "// neu khong co anh nao dat, dung anh dau tien de khong lam gian doan pipeline.\n"
-            "const hq = photos.find(p => Math.min(p.width || 0, p.height || 0) >= MIN_DIMENSION);\n"
-            "const photo = hq || photos[0];\n"
-            "const imageUrl = photo && photo.src && (photo.src.large2x || photo.src.large || photo.src.original);\n\n"
-            "const scene = $('Check Tavily Images').first().json;\n\n"
-            "if (!imageUrl) {\n"
-            "  throw new Error('Pexels khong tra ve anh phu hop cho query: ' + (scene.stockQuery || ''));\n"
-            "}\n\n"
-            "return { json: { ...scene, pexelsImageUrl: imageUrl } };"
-        )
-    },
-    6712, Y_MAIN - 216, type_version=2,
-)
-
-wf.node(
-    "Download Image (Pexels)",
-    "n8n-nodes-base.httpRequest",
-    {"url": "={{ $json.pexelsImageUrl }}", "options": {"response": {"response": {"responseFormat": "file"}}, "timeout": 30000}},
-    6936, Y_MAIN - 216,
+    {"url": "={{ $json.pexelsVideoUrl }}", "options": {"response": {"response": {"responseFormat": "file"}}, "timeout": 60000}},
+    5592, Y_MAIN - 288,
     type_version=4.4,
 )
 
 wf.node(
-    "Finalize Scene Image",
+    "Finalize Scene Video",
     "n8n-nodes-base.code",
     {
         "mode": "runOnceForEachItem",
         "jsCode": (
-            "const scene = $('Check Tavily Images').first().json;\n\n"
+            "const scene = $('Extract Pexels Video URL').first().json;\n\n"
             "const staticData = $getWorkflowStaticData('global');\n"
             "if (!staticData.scenes) staticData.scenes = [];\n"
             "staticData.scenes.push({\n"
@@ -920,50 +777,41 @@ wf.node(
             "  headline: scene.headline,\n"
             "  narration: scene.narration,\n"
             "  duration: scene.duration,\n"
-            "  camera: scene.camera,\n"
             "  animation: scene.animation,\n"
             "  transition: scene.transition,\n"
             "  subtitle_style: scene.subtitle_style,\n"
             "  highlight_words: scene.highlight_words,\n"
             "  importance: scene.importance,\n"
             "  audioPath: scene.audioPath,\n"
-            "  imagePath: scene.imagePath\n"
+            "  videoPath: scene.videoPath\n"
             "});\n\n"
             "return {\n"
             "  json: scene,\n"
-            "  binary: { image: $input.item.binary.data }\n"
+            "  binary: { video: $input.item.binary.data }\n"
             "};"
         )
     },
-    7160, Y_MAIN - 288, type_version=2,
+    5816, Y_MAIN - 288, type_version=2,
 )
 
 wf.node(
-    "Write image file",
+    "Write video file",
     "n8n-nodes-base.readWriteFile",
-    {"operation": "write", "fileName": "={{ $json.imagePath }}", "dataPropertyName": "image", "options": {}},
-    7384, Y_MAIN - 120,
+    {"operation": "write", "fileName": "={{ $json.videoPath }}", "dataPropertyName": "video", "options": {}},
+    6040, Y_MAIN - 288,
 )
 
 wf.link("normalize scene data", "Generate audio (vietTTS)")
 wf.link("Generate audio (vietTTS)", "attach audio to scene")
 wf.link("attach audio to scene", "Loop Over Scenes")
-wf.link("Loop Over Scenes", "Build Image Queries", src_index=1)
-wf.link("Build Image Queries", "Write audio file")
-wf.link("Write audio file", "Tavily Image Search")
-wf.link("Tavily Image Search", "Check Tavily Images")
-wf.link("Check Tavily Images", "Has Tavily Image?")
-wf.link("Has Tavily Image?", "Download Image (Tavily)", src_index=0)
-wf.link("Has Tavily Image?", "Pexels Image Search", src_index=1)
-wf.link("Download Image (Tavily)", "Validate Tavily Image")
-wf.link("Validate Tavily Image", "Is Tavily Image Valid?")
-wf.link("Is Tavily Image Valid?", "Finalize Scene Image", src_index=0)
-wf.link("Is Tavily Image Valid?", "Pexels Image Search", src_index=1)
-wf.link("Pexels Image Search", "Extract Pexels Image URL")
-wf.link("Extract Pexels Image URL", "Download Image (Pexels)")
-wf.link("Download Image (Pexels)", "Finalize Scene Image")
-wf.link("Finalize Scene Image", "Write image file")
-wf.link("Write image file", "Loop Over Scenes")
+wf.link("Loop Over Scenes", "Build Video Queries", src_index=1)
+wf.link("Build Video Queries", "Write audio file")
+wf.link("Write audio file", "Pexels Video Search")
+wf.link("Pexels Video Search", "Extract Pexels Video URL")
+wf.link("Extract Pexels Video URL", "Download Pexels Video")
+wf.link("Download Pexels Video", "Finalize Scene Video")
+wf.link("Finalize Scene Video", "Write video file")
+wf.link("Write video file", "Loop Over Scenes")
 
 print("module 3 (voice+images) nodes so far:", len(wf.nodes))
 
@@ -1003,57 +851,26 @@ wf.node(
 )
 
 wf.node(
-    "Build Render Script",
+    # Caption ngan (vai tu/scene, chu to) voi tu dang duoc "noi" to mau vang,
+    # cac tu con lai mau trang - kieu karaoke. Vi vietTTS khong tra ve timestamp
+    # tung tu, thoi gian moi tu duoc UOC LUONG ti le theo do dai ky tu trong
+    # tong thoi luong audio THAT của scene (do bang ffprobe, execSync ngay tai
+    # day vi file audio da duoc ghi xong tu vong Loop Over Scenes). Ghi truc
+    # tiep ra file .ass hoan chinh (khong con lam trong Build Render Script/
+    # bash nua) de tan dung so hoc dau phay dong (floating point) de dang hon
+    # trong JS so voi awk.
+    "Build Subtitles (ASS)",
     "n8n-nodes-base.code",
     {
         "jsCode": (
-            "// !!! DOI duong dan SUBSCRIBE_CLIP cho dung may ban neu can !!!\n"
-            "// !!! DOI SCENE_TIMEOUT_SEC neu may ban render cham/nhanh hon muc mac dinh !!!\n"
-            "// Dinh dang SHORTS doc 9:16 (1080x1920)\n"
-            "const W = 1080, H = 1920, FPS = 30;\n"
-            "// FIX (chuyen canh/zoom bi rung lac nhe - zoompan jitter): filter 'zoompan'\n"
-            "// cua ffmpeg lam tron x/y ve so nguyen MOI FRAME. Voi zoom cham (vd +0.0008/\n"
-            "// frame), buoc di chuyen thuc te duoi 1 pixel/frame nen bi lam tron thanh cac\n"
-            "// buoc nhay 0-hoac-1-pixel khong deu, tao cam giac 'giat/rung' nhe (da kiem\n"
-            "// chung: do coefficient-of-variation cua frame-diff giam ~50% khi supersample\n"
-            "// 2x roi downscale, so voi lam zoompan truc tiep o do phan giai dich). Cach\n"
-            "// khac phuc chuan: cho zoompan chay tren canvas LON HON (SS lan), roi scale\n"
-            "// xuong kich thuoc that o buoc cuoi - luoi pixel min hon lam sai so lam tron\n"
-            "// tro nen nho hon nhieu (duoi nguong nhin thay) sau khi downscale.\n"
-            "const SS = 2;\n"
-            "const WS = W * SS, HS = H * SS;\n"
-            "const SCENE_TIMEOUT_SEC = 300;\n"
-            "const PRESET = 'veryfast';\n"
+            "const { execSync } = require('child_process');\n"
+            "const W = 1080, H = 1920;\n"
+            "const WORDS_PER_CHUNK = 4; // so tu toi da hien thi cung luc tren man hinh\n"
             "const staticData = $getWorkflowStaticData('global');\n"
             "const scenes = (staticData.scenes || []).slice().sort((a, b) => a.sceneId - b.sceneId);\n"
-            "const videoId = $('Generate Video ID').first().json.videoId;\n"
-            "const dir = $('Init Paths').first().json.videoDir;\n"
-            "const subscribeClip = $('Init Paths').first().json.subscribeClip;\n\n"
-            "function zoompanExpr(camera) {\n"
-            "  switch (camera) {\n"
-            "    case 'push-in':\n"
-            "      return `zoompan=z='min(1+0.20*on/$FRAMES,1.20)':d=$FRAMES:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=${WS}x${HS}:fps=${FPS}`;\n"
-            "    case 'pull-out':\n"
-            "      return `zoompan=z='max(1.20-0.20*on/$FRAMES,1.0)':d=$FRAMES:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=${WS}x${HS}:fps=${FPS}`;\n"
-            "    case 'pan-left':\n"
-            "      return `zoompan=z=1.15:d=$FRAMES:x='(iw-iw/zoom)*(1-on/$FRAMES)':y='ih/2-(ih/zoom/2)':s=${WS}x${HS}:fps=${FPS}`;\n"
-            "    case 'pan-right':\n"
-            "      return `zoompan=z=1.15:d=$FRAMES:x='(iw-iw/zoom)*(on/$FRAMES)':y='ih/2-(ih/zoom/2)':s=${WS}x${HS}:fps=${FPS}`;\n"
-            "    case 'parallax':\n"
-            "      return `zoompan=z='min(zoom+0.0010,1.25)':d=$FRAMES:x='(iw-iw/zoom)*(on/$FRAMES)':y='ih/2-(ih/zoom/2)':s=${WS}x${HS}:fps=${FPS}`;\n"
-            "    case 'slow-zoom':\n"
-            "    default:\n"
-            "      // FIX (khong con 'static' khong zoom): moi scene LUON co Ken Burns zoom nhe,\n"
-            "      // ke ca khi model tra ve gia tri camera khong xac dinh.\n"
-            "      return `zoompan=z='min(zoom+0.0008,1.15)':d=$FRAMES:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=${WS}x${HS}:fps=${FPS}`;\n"
-            "  }\n"
-            "}\n\n"
-            "// Bo chu (caption) chay theo giong doc: dung dinh dang ASS (khong phai SRT) voi\n"
-            "// PlayResX/PlayResY khai bao DUNG bang kich thuoc khung hinh (1080x1920). SRT\n"
-            "// chuyen sang ASS ngam dinh cua ffmpeg co ty le scale khong nhat quan (da kiem\n"
-            "// chung thuc te: chu bi phong to qua muc, tran het len tren khung hinh). O day\n"
-            "// KHONG tu wrap dong nua - de libass tu dong wrap (WrapStyle=0) theo dung\n"
-            "// chieu rong that cua khung hinh, tranh bi mat noi dung do gioi han cung 2 dong.\n"
+            "const dir = $('Init Paths').first().json.videoDir;\n\n"
+            "const YELLOW = '&H00FFFF&'; // ASS la BGR: vang = B00 G FF R FF\n"
+            "const WHITE = '&HFFFFFF&';\n\n"
             "const assHeader = [\n"
             "  '[Script Info]',\n"
             "  'ScriptType: v4.00+',\n"
@@ -1064,23 +881,91 @@ wf.node(
             "  '',\n"
             "  '[V4+ Styles]',\n"
             "  'Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding',\n"
-            "  'Style: Default,Arial,46,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,-1,0,0,0,100,100,0,0,1,3,1,2,60,60,140,1',\n"
+            "  'Style: Default,Arial,68,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,-1,0,0,0,100,100,0,0,1,4,1,2,60,60,160,1',\n"
             "  '',\n"
             "  '[Events]',\n"
             "  'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text'\n"
             "].join('\\n');\n\n"
-            "function cleanCaption(text) {\n"
-            "  return String(text || '').trim().replace(/\\s+/g, ' ');\n"
-            "}\n"
-            "// Escape ky tu dac biet cua ASS ({ } co the bi hieu nham la override tag) roi\n"
-            "// den ky tu dac biet cua bash heredoc KHONG quote ($ va backtick) - can de\n"
-            "// SUB_START/SUB_END van duoc noi suy binh thuong trong heredoc.\n"
-            "function escapeForHeredoc(text) {\n"
-            "  return String(text)\n"
-            "    .replace(/\\\\/g, '\\\\\\\\')\n"
-            "    .replace(/\\{/g, '(').replace(/\\}/g, ')')\n"
-            "    .replace(/`/g, '\\\\`').replace(/\\$/g, '\\\\$');\n"
+            "function esc(text) {\n"
+            "  // { } co the bi hieu nham la override tag trong ASS.\n"
+            "  return String(text || '').replace(/\\{/g, '(').replace(/\\}/g, ')');\n"
             "}\n\n"
+            "function fmtTime(sec) {\n"
+            "  const h = Math.floor(sec / 3600);\n"
+            "  const m = Math.floor((sec % 3600) / 60);\n"
+            "  const s = (sec - h * 3600 - m * 60).toFixed(2);\n"
+            "  return `${h}:${String(m).padStart(2, '0')}:${s.padStart(5, '0')}`;\n"
+            "}\n\n"
+            "const dialogueLines = [];\n"
+            "let subOffset = 0;\n\n"
+            "for (const scene of scenes) {\n"
+            "  const audioPath = scene.audioPath;\n"
+            "  const audioDur = parseFloat(execSync(\n"
+            "    `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 \"${audioPath}\"`\n"
+            "  ).toString().trim()) || 0;\n"
+            "  const dur = audioDur + 0.6; // padding, phai khop CHINH XAC voi Build Render Script\n\n"
+            "  const words = String(scene.narration || '').trim().split(/\\s+/).filter(Boolean);\n"
+            "  if (words.length === 0) { subOffset += dur; continue; }\n\n"
+            "  const totalChars = words.reduce((s, w) => s + w.length, 0) || 1;\n"
+            "  const chunks = [];\n"
+            "  for (let i = 0; i < words.length; i += WORDS_PER_CHUNK) chunks.push(words.slice(i, i + WORDS_PER_CHUNK));\n\n"
+            "  let sceneElapsed = 0;\n"
+            "  for (const chunk of chunks) {\n"
+            "    const chunkChars = chunk.reduce((s, w) => s + w.length, 0) || 1;\n"
+            "    const chunkDur = dur * (chunkChars / totalChars);\n"
+            "    const chunkStart = sceneElapsed;\n\n"
+            "    let wordElapsed = 0;\n"
+            "    for (let wi = 0; wi < chunk.length; wi++) {\n"
+            "      const wordDur = chunkDur * (chunk[wi].length / chunkChars);\n"
+            "      const start = subOffset + chunkStart + wordElapsed;\n"
+            "      const end = start + wordDur;\n"
+            "      const text = chunk.map((w, i) => i === wi ? `{\\\\c${YELLOW}}${esc(w)}{\\\\c${WHITE}}` : esc(w)).join(' ');\n"
+            "      dialogueLines.push(`Dialogue: 0,${fmtTime(start)},${fmtTime(end)},Default,,0,0,0,,${text}`);\n"
+            "      wordElapsed += wordDur;\n"
+            "    }\n"
+            "    sceneElapsed += chunkDur;\n"
+            "  }\n\n"
+            "  subOffset += dur;\n"
+            "}\n\n"
+            "const assContent = assHeader + '\\n' + dialogueLines.join('\\n') + '\\n';\n"
+            "const buffer = Buffer.from(assContent, 'utf-8');\n\n"
+            "return [{\n"
+            "  json: { subtitlesPath: `${dir}/subtitles.ass` },\n"
+            "  binary: { subtitles: await this.helpers.prepareBinaryData(buffer, 'subtitles.ass', 'text/plain') }\n"
+            "}];"
+        )
+    },
+    5032, Y_MAIN, type_version=2,
+)
+
+wf.node(
+    "Write subtitles.ass",
+    "n8n-nodes-base.readWriteFile",
+    {"operation": "write", "fileName": "={{ $json.subtitlesPath }}", "dataPropertyName": "subtitles", "options": {}},
+    5088, Y_MAIN,
+)
+
+wf.node(
+    "Build Render Script",
+    "n8n-nodes-base.code",
+    {
+        "jsCode": (
+            "// !!! DOI duong dan SUBSCRIBE_CLIP cho dung may ban neu can !!!\n"
+            "// !!! DOI SCENE_TIMEOUT_SEC neu may ban render cham/nhanh hon muc mac dinh !!!\n"
+            "// Dinh dang SHORTS doc 9:16 (1080x1920)\n"
+            "const W = 1080, H = 1920, FPS = 30;\n"
+            "const SCENE_TIMEOUT_SEC = 300;\n"
+            "const PRESET = 'veryfast';\n"
+            "const staticData = $getWorkflowStaticData('global');\n"
+            "const scenes = (staticData.scenes || []).slice().sort((a, b) => a.sceneId - b.sceneId);\n"
+            "const videoId = $('Generate Video ID').first().json.videoId;\n"
+            "const dir = $('Init Paths').first().json.videoDir;\n"
+            "const subscribeClip = $('Init Paths').first().json.subscribeClip;\n\n"
+            "// FIX (2026-07-28): khong con dung anh tinh + zoompan Ken Burns nua - moi\n"
+            "// scene gio la 1 CLIP VIDEO NGAN tai tu Pexels (xem Build Video Queries/\n"
+            "// Pexels Video Search). subtitles.ass da duoc node 'Build Subtitles (ASS)'\n"
+            "// ghi san (caption ngan, karaoke tu-vang) TRUOC buoc nay - o day chi can\n"
+            "// tham chieu toi file do, khong tu sinh ASS header/dialogue nua.\n"
             "let script = `#!/bin/bash\n"
             "set -e\n"
             "# ffmpeg chuan cua Homebrew KHONG co libass/freetype (thieu filter 'ass').\n"
@@ -1092,11 +977,6 @@ wf.node(
             "exec 2>> \"${dir}/ffmpeg_error.log\"\n\n"
             "PROGRESS_LOG=\"${dir}/render_progress.log\"\n"
             "> \"$PROGRESS_LOG\"\n\n"
-            "SUBTITLE_FILE=\"${dir}/subtitles.ass\"\n"
-            "cat > \"$SUBTITLE_FILE\" << 'ASSHEADEREOF'\n"
-            "${assHeader}\n"
-            "ASSHEADEREOF\n"
-            "SUB_OFFSET=0\n\n"
             "SUBSCRIBE_SRC=\"${subscribeClip}\"\n"
             "SUBSCRIBE_NORMALIZED=\"${dir}/subscribe_normalized.mp4\"\n"
             "if [ ! -f \"$SUBSCRIBE_NORMALIZED\" ]; then\n"
@@ -1109,28 +989,19 @@ wf.node(
             "for (const scene of scenes) {\n"
             "  idx++;\n"
             "  const id = scene.sceneId;\n"
-            "  const img = `scene_${id}_image.jpg`;\n"
+            "  const clip = `scene_${id}_video.mp4`;\n"
             "  const audio = `scene_${id}_audio.wav`;\n"
             "  const out = `scene_${id}_clip.mp4`;\n"
-            "  const filter = zoompanExpr(scene.camera);\n"
-            "  const captionText = escapeForHeredoc(cleanCaption(scene.narration));\n"
             "  processed.push(out);\n\n"
             "  script += `\n"
-            "echo \"[$(date '+%H:%M:%S')] BAT DAU scene ${idx}/${scenes.length} (id=${id}, camera=${scene.camera})\" | tee -a \"$PROGRESS_LOG\"\n\n"
+            "echo \"[$(date '+%H:%M:%S')] BAT DAU scene ${idx}/${scenes.length} (id=${id})\" | tee -a \"$PROGRESS_LOG\"\n\n"
             "AUDIO_DUR=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 \"${audio}\")\n"
-            "DUR=$(awk -v d=\"$AUDIO_DUR\" 'BEGIN{printf \"%.2f\", d+0.6}')\n"
-            "FRAMES=$(awk -v d=\"$DUR\" 'BEGIN{printf \"%d\", d*${FPS}}')\n\n"
-            "if ! timeout ${SCENE_TIMEOUT_SEC}s ffmpeg -y -hide_banner -loglevel error -loop 1 -i \"${img}\" -i \"${audio}\" -filter_complex \"[0:v]scale=${WS}:${HS}:force_original_aspect_ratio=increase,crop=${WS}:${HS},setsar=1,${filter},scale=${W}:${H}:flags=lanczos[v]\" -map \"[v]\" -map 1:a -c:v libx264 -preset ${PRESET} -crf 18 -pix_fmt yuv420p -r ${FPS} -c:a aac -b:a 192k -ar 44100 -ac 2 -t \"$DUR\" \"${out}\"; then\n"
+            "DUR=$(awk -v d=\"$AUDIO_DUR\" 'BEGIN{printf \"%.2f\", d+0.6}')\n\n"
+            "if ! timeout ${SCENE_TIMEOUT_SEC}s ffmpeg -y -hide_banner -loglevel error -stream_loop -1 -i \"${clip}\" -i \"${audio}\" -filter_complex \"[0:v]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},setsar=1[v]\" -map \"[v]\" -map 1:a -c:v libx264 -preset ${PRESET} -crf 18 -pix_fmt yuv420p -r ${FPS} -c:a aac -b:a 192k -ar 44100 -ac 2 -t \"$DUR\" \"${out}\"; then\n"
             "  echo \"[$(date '+%H:%M:%S')] !!! Scene ${id} loi hoac vuot qua ${SCENE_TIMEOUT_SEC}s\" | tee -a \"$PROGRESS_LOG\"\n"
             "  exit 1\n"
             "fi\n\n"
-            "echo \"[$(date '+%H:%M:%S')] XONG scene ${idx}/${scenes.length}\" | tee -a \"$PROGRESS_LOG\"\n\n"
-            "SUB_START=$(awk -v s=\"$SUB_OFFSET\" 'BEGIN{h=int(s/3600);m=int((s%3600)/60);sec=s-h*3600-m*60;printf \"%d:%02d:%05.2f\", h, m, sec}')\n"
-            "SUB_END=$(awk -v s=\"$SUB_OFFSET\" -v d=\"$DUR\" 'BEGIN{e=s+d;h=int(e/3600);m=int((e%3600)/60);sec=e-h*3600-m*60;printf \"%d:%02d:%05.2f\", h, m, sec}')\n"
-            "cat >> \"$SUBTITLE_FILE\" << SUBEOF\n"
-            "Dialogue: 0,$SUB_START,$SUB_END,Default,,0,0,0,,${captionText}\n"
-            "SUBEOF\n"
-            "SUB_OFFSET=$(awk -v o=\"$SUB_OFFSET\" -v d=\"$DUR\" 'BEGIN{printf \"%.3f\", o+d}')\n"
+            "echo \"[$(date '+%H:%M:%S')] XONG scene ${idx}/${scenes.length}\" | tee -a \"$PROGRESS_LOG\"\n"
             "`;\n"
             "}\n\n"
             "// FIX (dong bo tieng click voi animation subscribe): dung concat FILTER\n"
@@ -1140,9 +1011,7 @@ wf.node(
             "// timestamp tung input rieng biet trong 1 lan encode duy nhat nhu concat filter.\n"
             "//\n"
             "// Sau concat, chain them filter 'ass' de burn caption (subtitles.ass, da duoc\n"
-            "// ghi day du sau vong for tren) dong bo voi giong doc. Dung filter 'ass' (khong\n"
-            "// phai 'subtitles') vi file da la ASS voi PlayResX/PlayResY dung bang khung\n"
-            "// hinh - khong can (va khong nen) truyen them original_size/force_style nua.\n"
+            "// node 'Build Subtitles (ASS)' ghi san TRUOC khi Build Render Script chay).\n"
             "const allClips = [...processed, 'subscribe_normalized.mp4'];\n"
             "const inputs = allClips.map(f => `-i \"${f}\"`).join(' ');\n"
             "let filterInputs = '';\n"
@@ -1187,7 +1056,9 @@ wf.node(
 
 wf.link("Loop Over Scenes", "prepare storyboard.json", src_index=0)
 wf.link("prepare storyboard.json", "Write storyboard.json")
-wf.link("Write storyboard.json", "Build Render Script")
+wf.link("Write storyboard.json", "Build Subtitles (ASS)")
+wf.link("Build Subtitles (ASS)", "Write subtitles.ass")
+wf.link("Write subtitles.ass", "Build Render Script")
 wf.link("Build Render Script", "Write Render Script")
 wf.link("Write Render Script", "Execute Render Script (ffmpeg)")
 
